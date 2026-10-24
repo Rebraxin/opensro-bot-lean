@@ -2957,6 +2957,14 @@ test('saved Berserk choices give party Giants the old Party monsters setting', (
   assert.equal(f.botProfile({ macro: { berserkClasses: { party: true, giantParty: false } } }).macro.berserkClasses.giantParty, false, 'A saved Giant party choice wins');
   assert.equal(f.botProfile({}).macro.berserkClasses.giantParty, false);
 });
+test('the live status lines can be hidden and the choice is kept for every character', () => {
+  let f = fixture(); f.UI.waitNote = {}; f.UI.showStatus();
+  assert.equal(f.UI.waitNote.hidden, false, 'shown by default');
+  f.UI.showStatus(false); assert.equal(f.UI.waitNote.hidden, true); assert.equal(JSON.parse(f.storage.get('sroLean:ui')).hideStatus, true);
+  const saved = f.storage.get('sroLean:ui'); f = fixture(); f.storage.set('sroLean:ui', saved); f.UI.waitNote = {}; f.UI.showStatus();
+  assert.equal(f.UI.waitNote.hidden, true, 'still hidden after a reload');
+  f.UI.showStatus(true); assert.equal(f.UI.waitNote.hidden, false);
+});
 test('town cycle does not repeat unconfirmed pet transfers and stops on full storage', () => {
   const f = townFixture(); f.Town.begin(); f.Town.enter('store');
   f.World.gp.storage = { npc: 60, phase: 'open', capacity: 1, items: [] }; f.World.gp.target = 60;

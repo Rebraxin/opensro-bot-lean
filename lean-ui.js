@@ -198,7 +198,7 @@ const UI = {
     this.nav = el('nav'); this.nav.setAttribute('aria-label', 'Bot settings');
     this.buildNav();
     this.pane = el('div', null, 'pane'); this.feedback = el('div', null, 'feedback'); this.feedback.setAttribute('role', 'status');
-    this.waitNote = el('div', '', 'waiting'); this.waitNote.setAttribute('role', 'status');
+    this.waitNote = el('div', '', 'waiting'); this.waitNote.setAttribute('role', 'status'); this.showStatus();
     this.body.append(this.makeMenubar(), this.updateNote, this.makeStrip(), this.status, this.waitNote, controls, this.nav, this.pane, this.makeSide(), this.feedback, this.makeLog());
     for (const corner of ['lu', 'mu', 'ru', 'ls', 'rs', 'ld', 'md', 'rd']) panel.append(el('div', null, 'frame ' + corner));
     panel.append(header, this.body); this.root.append(style, panel, this.makeOrb());
@@ -214,6 +214,11 @@ const UI = {
   },
   // Minimised window: a skill-slot sized icon with a status dot. The bot keeps running.
   // Global (not per character) and kept in this page's storage, like the window position.
+  // The live status lines above the buttons can be hidden; they still feed the strip and the activity log.
+  showStatus(on) {
+    if (on !== undefined) this.uiPrefs({ hideStatus: !on });
+    if (this.waitNote) this.waitNote.hidden = !!this.uiPrefs().hideStatus;
+  },
   uiPrefs(patch) {
     let prefs = {};
     try { prefs = JSON.parse(W.localStorage.getItem('sroLean:ui') || '{}') || {}; } catch {}
@@ -1053,7 +1058,7 @@ const UI = {
   section_settingsActivity(host) {
     const H = () => Settings.profile.hunt, M = () => Settings.profile.macro, P = () => Settings.profile.potion, C = () => Restock.cfg();
       this.logs = this.activityLog('Settings activity');
-      host.append(this.group('Recent activity', this.button('Pop out session totals and log', () => this.showSession(true)), this.activityPanel(this.logs, 'Settings')));
+      host.append(this.group('Recent activity', this.check('Show live status above the buttons', () => !this.uiPrefs().hideStatus, v => this.showStatus(v)), this.button('Pop out session totals and log', () => this.showSession(true)), this.activityPanel(this.logs, 'Settings')));
   },
   // The wide window shows a page as two columns. Plain grid rows leave a gap under every box that is shorter than its
   // neighbour, so the boxes are dealt into two stacks instead: each one goes under the shorter stack, in page order.
@@ -1193,7 +1198,7 @@ const UI = {
     if (this.is('Combat', 'Buffs & imbue') && BuffGear.note) BuffGear.note.textContent = BuffGear.status();
     Reports.render();
     const diagnosticState = Diagnostics.sample();
-    if (this.waitNote) this.waitNote.textContent = Diagnostics.lines(diagnosticState);
+    if (this.waitNote) this.waitNote.title = this.waitNote.textContent = Diagnostics.lines(diagnosticState);
     this.updateOrb(); this.updateWide();
     if (this.townNote) this.townNote.textContent = Town.status();
     if (this.is('Settings') && AutoMastery.note) AutoMastery.note.textContent = AutoMastery.status();

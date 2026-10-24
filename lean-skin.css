@@ -62,7 +62,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;max-height:130px;
 .wardrobe-item[aria-pressed=true]{color:#ffe08a;outline:1px solid #ffe08a;outline-offset:-2px}
 @media(max-width:500px){:host{right:4px;top:70px;width:calc(100vw - 8px)}.body{margin:0 13px}.pane{max-height:clamp(200px,calc(100vh - 280px),720px)}.field input[type=text]{width:150px}.skill-row{gap:4px}.controls{gap:2px}}
 
-.waiting{white-space:pre-line;color:#c8d9ae;margin:4px 0}:host(:not(.wide)) .waiting{min-height:2lh}
+.waiting{white-space:pre-line;color:#c8d9ae;margin:4px 0;height:3lh;overflow:hidden}
 textarea{width:100%;color:inherit;background:#151916;font:11px monospace}
 
 .dialog{position:fixed;width:min(430px,calc(100vw - 8px));z-index:10}.dialog[hidden]{display:none}.dialog-body{max-height:min(70vh,640px);margin:0 15px}.report-preview .field{display:block}.report-preview .field>span{display:block;margin-bottom:4px}.report-image{display:block;width:100%;height:auto;margin:6px 0;border:1px solid #5d5034}
@@ -237,7 +237,7 @@ fieldset>input[type=search]{width:100%;margin:2px 0 6px}
 :host(.classic) nav button>img{display:block;width:16px;height:16px;border:0;background:none;flex:none}
 :host(.classic) nav button:hover{background:#17173a;box-shadow:none}
 :host(.classic) nav button[aria-selected=true]{background:var(--c-chip);color:#fff;box-shadow:none}
-:host(.classic) .waiting{grid-area:wait;min-height:2lh;margin:0 0 4px;color:var(--c-dim)}
+:host(.classic) .waiting{grid-area:wait;margin:0 0 4px;color:var(--c-dim)}
 :host(.classic) .pane{grid-area:pane;display:block;height:min(470px,calc(100vh - 360px));min-height:240px;max-height:none;padding:6px 10px 6px 6px;background:#000;border:1px solid #2a2a33;
   overflow-y:scroll;overflow-x:hidden;scrollbar-color:#6a6a78 #101014}
 :host(.classic) .pane::-webkit-scrollbar{width:14px}
