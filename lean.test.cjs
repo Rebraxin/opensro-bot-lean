@@ -728,6 +728,7 @@ test('item codenames give race, gender, degree, type and the filters', () => {
   assert.deepEqual([f.ItemRules.info(502).group, f.ItemRules.info(8).group, f.ItemRules.info(503).group], ['accessory', 'potion', 'alchemy']);
   const ids = filter => JSON.parse(JSON.stringify(f.ItemRules.list(filter).map(i => i.id)));
   assert.deepEqual(ids({ group: 'equipment', degrees: new Set([9]) }), [97, 4040]);
+  assert.deepEqual(ids({ sox: 'any' }), [4040]); assert.deepEqual(ids({ sox: '3' }), [4040]); assert.deepEqual(ids({ sox: '1' }), []);
   assert.deepEqual(ids({ race: 'EU', kind: 'Protector' }), [500]);
   assert.deepEqual(ids({ query: 'potion' }), [8]);
   f.ItemRules.set([502], { act: 'sell' }); assert.deepEqual(ids({ custom: true }), [502], 'custom: only items with a rule');
