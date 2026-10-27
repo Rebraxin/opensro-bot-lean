@@ -3,7 +3,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync(__dirname + '/bot.lean.user.js', 'utf8');
 const isolated = source.slice(0, source.lastIndexOf('installWorkerHook();')) +
-  'globalThis.bot = {RenderControl, Activity, World, Settings, Updates, Diagnostics, Reports, Alchemy, BuffGear, Icons, Hook, Cmd, Hunt, Loot, Restock, Trade, WalkBack, Navigation, Route, Learned, Display, Wardrobe, WdData, LeanWardrobe, Controller, UI, Stats, Combat, Potion, Party, Town, bus, Manual, Resurrect, Support, ItemRules, SpeedScroll, Log, AntiStuck, Chase, Trap, botProfile, ItemRules, Items, AutoMastery, StatPoints, ProfileShare, Setup, Trace, DEFAULT_PROFILE, PetPotion, Reconnect, Reconnect, Lure, stopAll, toggleBot, boot, Ticker, Sound, LeanMap};\n})();';
+  'globalThis.bot = {RenderControl, Activity, World, Settings, Updates, Diagnostics, Reports, Alchemy, BuffGear, Icons, Hook, Cmd, Hunt, Loot, Restock, Trade, WalkBack, Navigation, Route, Learned, Display, Wardrobe, WdData, LeanWardrobe, Controller, UI, Stats, Combat, Potion, Party, Town, bus, Manual, Resurrect, Support, ItemRules, SpeedScroll, RepairHammer, Log, AntiStuck, Chase, Trap, botProfile, ItemRules, Items, AutoMastery, StatPoints, ProfileShare, Setup, Trace, DEFAULT_PROFILE, PetPotion, Reconnect, Reconnect, Lure, stopAll, toggleBot, boot, Ticker, Sound, LeanMap};\n})();';
 function fixture(document) {
   let time = 100000;
   const storage = new Map(), commands = [], notices = [], intervals = [], timers = [];
@@ -1764,6 +1764,40 @@ test('speed scroll works during return travel and cannot interrupt a resurrectio
   f.advance(1000); f.WalkBack.start(); f.Controller.tick(); assert.equal(f.commands.at(-1).kind,'item-use');
   const g=fixture(); beginnerScroll(g); g.Resurrect.holdUntil=110000;
   assert.equal(g.SpeedScroll.tick(),false); assert.equal(g.commands.filter(c=>c.kind==='item-use').length,0);
+});
+function wornWithHammer(f, durability = 4) {
+  f.Settings.profile.potion.repairHammer.on = true;
+  f.World.gp.inventory.push(
+    { slot: 6, refObjId: 900, typeFlags: 44 | (6 << 7), durability, variance: '0', magic: [], tooltip: { fields: { canRepair: 1, varianceIntMin1c0: 10, varianceIntMax1c4: 10 } } },
+    { slot: 16, refObjId: 2401, typeFlags: 3820, quantity: 3, codename: 'ITEM_MALL_REPAIR_HAMMER' });
+  f.Hunt.start();
+}
+test('repair hammer is opt-in, used below the durability threshold and confirmed by the repair', () => {
+  const f = fixture(); const R = f.Settings.profile.potion.repairHammer; assert.deepEqual([R.on, R.pct], [false, 50]);
+  wornWithHammer(f); f.Settings.profile.potion.repairHammer.on = false;
+  f.Controller.tick(); assert.equal(f.commands.some(c => c.kind === 'item-use'), false, 'off by default');
+  f.Settings.profile.potion.repairHammer.on = true; f.Controller.tick();
+  assert.equal(f.commands.at(-1).kind, 'item-use'); assert.equal(f.commands.at(-1).slot, 16);
+  assert.equal(f.Controller.mode, 'repair hammer');
+  f.advance(1000); f.Controller.tick(); assert.equal(f.commands.filter(c => c.kind === 'item-use').length, 1, 'waits for the repair');
+  f.World.gp.inventory.find(i => i.slot === 6).durability = 10; f.Controller.tick();
+  assert.equal(f.RepairHammer.pending, null); assert.equal(f.RepairHammer.attempts, 0); assert.match(f.RepairHammer.message, /fine/);
+  f.advance(10000); f.Controller.tick(); assert.equal(f.commands.filter(c => c.kind === 'item-use').length, 1);
+});
+test('repair hammer waits for real wear, a hammer in the bag and hunting', () => {
+  const f = fixture(); wornWithHammer(f, 6); f.Controller.tick();
+  assert.equal(f.commands.some(c => c.kind === 'item-use'), false, '60% is above 50%');
+  const g = fixture(); wornWithHammer(g); g.World.gp.inventory = g.World.gp.inventory.filter(i => i.slot !== 16);
+  g.Controller.tick(); assert.equal(g.commands.some(c => c.kind === 'item-use'), false); assert.match(g.RepairHammer.message, /no repair hammer/);
+  const h = fixture(); wornWithHammer(h); h.Hunt.stop(); h.commands.length = 0; h.Controller.tick();
+  assert.equal(h.commands.some(c => c.kind === 'item-use'), false);
+  const k = fixture(); wornWithHammer(k); delete k.World.gp.inventory.find(i => i.slot === 6).tooltip; k.Controller.tick();
+  assert.equal(k.commands.some(c => c.kind === 'item-use'), false, 'an unknown maximum is not guessed');
+});
+test('unconfirmed repair hammer use backs off and stops after three attempts', () => {
+  const f = fixture(); wornWithHammer(f); f.Controller.tick();
+  for (let i = 0; i < 4; i++) { f.advance(9000); f.Controller.tick(); f.advance(90000); f.Controller.tick(); }
+  assert.equal(f.commands.filter(c => c.kind === 'item-use').length, 3); assert.match(f.RepairHammer.message, /3 attempts/);
 });
 test('res travel returns when radius shrinks and stops hunting if return cannot progress', () => {
   const f=resurrectionTravel(); f.Controller.tick(); f.World.gp.pose.x=270;
