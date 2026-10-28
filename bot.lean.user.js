@@ -10795,6 +10795,12 @@ const UI = {
     const host = this.root?.host;
     if (host) host.hidden = !host.hidden;
   },
+  toggleMinimised() {
+    const host = this.root?.host;
+    if (!host) return;
+    if (host.hidden) { host.hidden = false; this.minimise(false); return; }
+    this.minimise(!this.minimised);
+  },
   mount() {
     const host = el('div'); host.id = 'sro-bot-lean';
     document.documentElement.append(host);
@@ -10803,8 +10809,8 @@ const UI = {
     style.textContent = ':host{' + Object.entries(LEAN_SKIN).map(([key, data]) => `--s-${key}:url("${data}");`).join('') + '}\n' + LEAN_CSS + '\n:host([hidden]){display:none!important}';
     const panel = el('section', null, 'panel'), header = el('header');
     const fold = this.button('×', () => this.minimise(true));
-    fold.className = 'fold'; fold.setAttribute('aria-label', 'Minimise bot window'); fold.title = 'Minimise (the bot keeps running)';
-    header.title = 'The × minimises the window to a small icon; F7 folds it; Shift+F7 hides or shows everything.';
+    fold.className = 'fold'; fold.setAttribute('aria-label', 'Minimise bot window'); fold.title = 'Minimise · F6 (the bot keeps running)';
+    header.title = 'The × or F6 minimises the window to a small icon; F7 folds it; Shift+F7 hides or shows everything.';
     this.updateButton = this.button('Update', () => Updates.open());
     this.updateButton.className = 'update'; this.updateButton.hidden = true;
     // Updates are announced on Discord, so the invite sits next to the version.
@@ -10974,7 +10980,7 @@ const UI = {
     const orb = this.orb = el('button', null, 'orb'); orb.type = 'button'; orb.hidden = true;
     orb.setAttribute('aria-label', 'Show bot window');
     this.orbState = el('strong'); this.orbDetail = el('span'); this.orbVitals = el('span', '', 'muted');
-    const tip = el('div', null, 'orb-tip'); tip.append(this.orbState, this.orbDetail, this.orbVitals, el('em', 'Click to open · drag to move'));
+    const tip = el('div', null, 'orb-tip'); tip.append(this.orbState, this.orbDetail, this.orbVitals, el('em', 'Click or F6 to open · drag to move'));
     orb.append(el('span', 'nb', 'orb-mark'), el('i', null, 'orb-dot'), tip);
     Icons.paint(orb, 'action\\icon_cha_auto_attack.ddj');
     let drag = null;
@@ -12756,6 +12762,7 @@ function boot() {
     const target = e.composedPath()[0];
     if (target?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName || '')) return;
     if (e.code === 'F8') { e.preventDefault(); e.stopImmediatePropagation(); toggleBot(); }
+    else if (e.code === 'F6') { e.preventDefault(); e.stopImmediatePropagation(); UI.toggleMinimised(); }
     else if (e.code === 'F7') {
       e.preventDefault(); e.stopImmediatePropagation();
       if (e.shiftKey) UI.toggleVisibility();
@@ -12767,7 +12774,7 @@ function boot() {
   setInterval(() => { Wardrobe.tick(); UI.update(); }, 500);
   W.SROLean = { version: VERSION, stats: Stats, updates: Updates, diagnostics: Diagnostics, reports: Reports, alchemy: Alchemy, buffGear: BuffGear, world: World, settings: Settings, hunt: Hunt, loot: Loot, speedScroll: SpeedScroll, repairHammer: RepairHammer, resurrect: Resurrect,
     restock: Restock, town: Town, walkBack: WalkBack, antiStuck: AntiStuck, chase: Chase, trap: Trap, autoMastery: AutoMastery, statPoints: StatPoints, share: ProfileShare, trace: Trace, setup: Setup, reconnect: Reconnect, petPotion: PetPotion, navigation: Navigation, route: Route, wardrobe: Wardrobe, wardrobeData: WdData, learned: Learned, controller: Controller, ui: UI, activity: Activity, map: LeanMap, render: RenderControl, support: Support, items: ItemRules, stop: stopAll, log: Log };
-  Log.info('NIX ready. F8 starts/stops; F7 folds; the × minimises; Shift+F7 hides/shows the window.');
+  Log.info('NIX ready. F8 starts/stops; F7 folds; F6 or the × minimises and restores; Shift+F7 hides/shows the window.');
 }
 
 installWorkerHook();

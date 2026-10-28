@@ -256,7 +256,7 @@ Click **Classic** at the top of the panel (screens at least 900 px wide) for a f
 
 ## Minimised panel
 
-The **×** at the top right of the panel minimises it to a small icon, so it stays out of the way while the bot keeps running. Its dot shows the state: green while hunting, yellow during a town trip, walk back, alchemy or reconnect, and red when stopped, dead or in error. Hover the icon for the current status, HP and MP. It glows when something needs you (a warning, a SoX pickup or a death) until you hover it or open the panel. Drag it anywhere; it keeps its spot and stays minimised after a reload. The panel itself also reopens where you last dragged it. Click it or press **F7** to bring the panel back.
+The **×** at the top right of the panel, or **F6**, minimises it to a small icon, so it stays out of the way while the bot keeps running. Its dot shows the state: green while hunting, yellow during a town trip, walk back, alchemy or reconnect, and red when stopped, dead or in error. Hover the icon for the current status, HP and MP. It glows when something needs you (a warning, a SoX pickup or a death) until you hover it or open the panel. Drag it anywhere; it keeps its spot and stays minimised after a reload. The panel itself also reopens where you last dragged it. Click it or press **F6** or **F7** to bring the panel back.
 
 ## Controls
 
@@ -264,6 +264,7 @@ The **×** at the top right of the panel minimises it to a small icon, so it sta
 | --- | --- |
 | **F8** | Start or stop the bot |
 | **×** (top right) | Minimise the panel to a small icon; the bot keeps running |
+| **F6** | Minimise the panel to a small icon, or bring it back; also shows a panel hidden with Shift+F7 |
 | **F7** | Fold or unfold the panel; brings a minimised panel back |
 | **Shift+F7** | Hide or show the panel; the bot keeps running |
 | **Return & hunt** | Walk to the saved hunting spot, then start hunting |

@@ -32,6 +32,7 @@ Settings are saved per character.
 | Key | Action |
 | --- | --- |
 | **F8** | Start / stop |
+| **F6** | Minimise to an icon / bring the panel back |
 | **F7** | Fold panel (brings a minimised one back) |
 | **Shift+F7** | Hide / show panel |
 | **×** | Minimise to an icon, bot keeps running |

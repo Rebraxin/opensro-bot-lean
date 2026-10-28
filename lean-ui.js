@@ -165,6 +165,12 @@ const UI = {
     const host = this.root?.host;
     if (host) host.hidden = !host.hidden;
   },
+  toggleMinimised() {
+    const host = this.root?.host;
+    if (!host) return;
+    if (host.hidden) { host.hidden = false; this.minimise(false); return; }
+    this.minimise(!this.minimised);
+  },
   mount() {
     const host = el('div'); host.id = 'sro-bot-lean';
     document.documentElement.append(host);
@@ -173,8 +179,8 @@ const UI = {
     style.textContent = ':host{' + Object.entries(LEAN_SKIN).map(([key, data]) => `--s-${key}:url("${data}");`).join('') + '}\n' + LEAN_CSS + '\n:host([hidden]){display:none!important}';
     const panel = el('section', null, 'panel'), header = el('header');
     const fold = this.button('×', () => this.minimise(true));
-    fold.className = 'fold'; fold.setAttribute('aria-label', 'Minimise bot window'); fold.title = 'Minimise (the bot keeps running)';
-    header.title = 'The × minimises the window to a small icon; F7 folds it; Shift+F7 hides or shows everything.';
+    fold.className = 'fold'; fold.setAttribute('aria-label', 'Minimise bot window'); fold.title = 'Minimise · F6 (the bot keeps running)';
+    header.title = 'The × or F6 minimises the window to a small icon; F7 folds it; Shift+F7 hides or shows everything.';
     this.updateButton = this.button('Update', () => Updates.open());
     this.updateButton.className = 'update'; this.updateButton.hidden = true;
     // Updates are announced on Discord, so the invite sits next to the version.
@@ -344,7 +350,7 @@ const UI = {
     const orb = this.orb = el('button', null, 'orb'); orb.type = 'button'; orb.hidden = true;
     orb.setAttribute('aria-label', 'Show bot window');
     this.orbState = el('strong'); this.orbDetail = el('span'); this.orbVitals = el('span', '', 'muted');
-    const tip = el('div', null, 'orb-tip'); tip.append(this.orbState, this.orbDetail, this.orbVitals, el('em', 'Click to open · drag to move'));
+    const tip = el('div', null, 'orb-tip'); tip.append(this.orbState, this.orbDetail, this.orbVitals, el('em', 'Click or F6 to open · drag to move'));
     orb.append(el('span', 'nb', 'orb-mark'), el('i', null, 'orb-dot'), tip);
     Icons.paint(orb, 'action\\icon_cha_auto_attack.ddj');
     let drag = null;
