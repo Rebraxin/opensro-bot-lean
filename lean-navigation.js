@@ -254,6 +254,28 @@ const Navigation = {
     owner.travel = null;
     return 'recover';
   },
+  stepOut(pose) {
+    if (this.pointStatus(pose) !== 'blocked') return null;
+    const strict = this.escapeCandidates(pose)[0];
+    if (strict) return strict;
+    const p = this.local(pose);
+    for (let r = 20; r <= 160; r += 20) for (let i = 0; i < 16; i++) {
+      const ux = Math.cos(i * Math.PI / 8), uz = Math.sin(i * Math.PI / 8);
+      const to = this.pose({ x: p.x + ux * r, z: p.z + uz * r }, pose.y), ahead = { x: p.x + ux * 5, z: p.z + uz * 5 };
+      if (this.pointStatus(to) === 'open' && !this.crosses(p, ahead) && this.clear(ahead, this.local(to), true)) return to;
+    }
+    return null;
+  },
+  crosses(a, b) {
+    const cross = (p, q, r) => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
+    for (let x = Math.floor((Math.min(a.x, b.x) - 2) / 80); x <= Math.floor((Math.max(a.x, b.x) + 2) / 80); x++)
+      for (let z = Math.floor((Math.min(a.z, b.z) - 2) / 80); z <= Math.floor((Math.max(a.z, b.z) + 2) / 80); z++)
+        for (const w of this.scene.walls.get(x + ',' + z) || []) {
+          const c = { x: w[0], z: w[1] }, d = { x: w[2], z: w[3] };
+          if (cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0) return true;
+        }
+    return false;
+  },
   next(owner, destination, recorded = false, arrivalRadius = 0) {
     const pose = World.pose(), previous = owner.travel;
     if (!this.scene || (pose.regionId & DUNGEON)) {
@@ -269,6 +291,10 @@ const Navigation = {
       let route = attempt({ avoid });
       // Avoided spots are only a hint: if they leave no route, walk the plain one rather than nothing.
       if (avoid.length && !route?.length) route = attempt({});
+      if (!route?.length) {
+        const out = this.stepOut(pose);
+        if (out) { owner.travel = null; return { point: out, stepOut: true }; }
+      }
       if (!route) return { waiting: true, error: 'Waiting for collision coverage at the current position.' };
       if (!route.length) return { error: 'No walkable route found through the loaded collision map.' };
       owner.travel = { destination: { ...destination }, route, index: 0, revision: this.revision };

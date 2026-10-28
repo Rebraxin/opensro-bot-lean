@@ -36,7 +36,7 @@ Activity.userMessage = function( entry ) {
 		const phase = entry.text.replace( /^Town phase: /, "" );
 		const phases = {
 			recall: "Preparing to return to town.", "recall-wait": "Returning to town…",
-			"revive-arrival": "Waiting to revive in town.", "walk-storage": "Walking to the warehouse.",
+			"revive-arrival": "Waiting to revive in town.", "walk-arrival": "Walking to the town start.", "walk-storage": "Walking to the warehouse.",
 			"open-storage": "Opening the warehouse.", store: "Depositing loot.", "close-storage": "Finished at the warehouse.",
 			"walk-vendor": "Walking to the potion merchant.", "open-vendor": "Opening the potion shop.",
 			buy: "Buying supplies.", "close-vendor": "Finished buying supplies.",

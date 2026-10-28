@@ -235,7 +235,7 @@ const DEFAULT_PROFILE = {
     antiStuck: { enabled: true, minutes: 3, maxRecoveries: 3 },
     detour: { enabled: true, stallMs: 2500 },
     trap: { enabled: true, seconds: 20, recall: false, diagnostics: false },
-    onDeath: 'stop', stopNoHpPotion: false, stopInvFull: false,
+    onDeath: 'stop', stopNoHpPotion: false, stopInvFull: false, autoStart: false,
     playerAlert: { enabled: false, radius: 250, pause: false }, manualPauseS: 6,
   },
 };
@@ -2099,6 +2099,28 @@ const Navigation = {
     owner.travel = null;
     return 'recover';
   },
+  stepOut(pose) {
+    if (this.pointStatus(pose) !== 'blocked') return null;
+    const strict = this.escapeCandidates(pose)[0];
+    if (strict) return strict;
+    const p = this.local(pose);
+    for (let r = 20; r <= 160; r += 20) for (let i = 0; i < 16; i++) {
+      const ux = Math.cos(i * Math.PI / 8), uz = Math.sin(i * Math.PI / 8);
+      const to = this.pose({ x: p.x + ux * r, z: p.z + uz * r }, pose.y), ahead = { x: p.x + ux * 5, z: p.z + uz * 5 };
+      if (this.pointStatus(to) === 'open' && !this.crosses(p, ahead) && this.clear(ahead, this.local(to), true)) return to;
+    }
+    return null;
+  },
+  crosses(a, b) {
+    const cross = (p, q, r) => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
+    for (let x = Math.floor((Math.min(a.x, b.x) - 2) / 80); x <= Math.floor((Math.max(a.x, b.x) + 2) / 80); x++)
+      for (let z = Math.floor((Math.min(a.z, b.z) - 2) / 80); z <= Math.floor((Math.max(a.z, b.z) + 2) / 80); z++)
+        for (const w of this.scene.walls.get(x + ',' + z) || []) {
+          const c = { x: w[0], z: w[1] }, d = { x: w[2], z: w[3] };
+          if (cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0) return true;
+        }
+    return false;
+  },
   next(owner, destination, recorded = false, arrivalRadius = 0) {
     const pose = World.pose(), previous = owner.travel;
     if (!this.scene || (pose.regionId & DUNGEON)) {
@@ -2114,6 +2136,10 @@ const Navigation = {
       let route = attempt({ avoid });
       // Avoided spots are only a hint: if they leave no route, walk the plain one rather than nothing.
       if (avoid.length && !route?.length) route = attempt({});
+      if (!route?.length) {
+        const out = this.stepOut(pose);
+        if (out) { owner.travel = null; return { point: out, stepOut: true }; }
+      }
       if (!route) return { waiting: true, error: 'Waiting for collision coverage at the current position.' };
       if (!route.length) return { error: 'No walkable route found through the loaded collision map.' };
       owner.travel = { destination: { ...destination }, route, index: 0, revision: this.revision };
@@ -4225,7 +4251,23 @@ const Town = {
     this.message = 'Town cycle: ' + phase;
   },
   // Plain wording for the service being approached (never an NPC name), for messages and bug reports.
-  role(phase) { return { storage: 'warehouse', vendor: 'potion merchant', smith: 'repair merchant', gate: 'world statue' }[String(phase).replace(/^(walk|open|close)-/, '')] || 'service point'; },
+  role(phase) { return { storage: 'warehouse', vendor: 'potion merchant', smith: 'repair merchant', gate: 'world statue', arrival: 'town start' }[String(phase).replace(/^(walk|open|close)-/, '')] || 'service point'; },
+  viaArrival() {
+    const t = this.trip, c = this.cfg();
+    if (t.phase === 'walk-arrival') {
+      this.enter(t.resume);
+      this.message = 'Town cycle: the town start is out of reach too; trying the ' + this.role(t.phase) + ' again.';
+      Log.info(this.message);
+      return true;
+    }
+    if (!c.arrival || t.viaArrival === t.phase || !(dist2D(World.pose(), c.arrival) > 60)) return false;
+    const resume = t.phase;
+    this.enter('walk-arrival');
+    t.resume = t.viaArrival = resume;
+    this.message = 'Town cycle: no way to the ' + this.role(resume) + ' from here; going to the town start first.';
+    Log.info(this.message);
+    return true;
+  },
   walk(dest) {
     const t = this.trip, pose = World.pose();
     // Permit a reachable nearby approach, but always stay in service range.
@@ -4240,6 +4282,7 @@ const Town = {
       return false;
     }
     if (!World.isSitting() && Navigation.watch(t, pose, t.movedAt, t.travel?.route[t.travel.index] || dest) === 'giveup') {
+      if (this.viaArrival()) return false;
       // The warehouse is optional: a blocked walk to it skips the deposit so the potions, repairs and the way back still happen.
       if (t.phase === 'walk-storage') {
         this.enter(this.closeNext('close-storage'));
@@ -4251,6 +4294,7 @@ const Town = {
       return false;
     }
     const step = Navigation.next(t, dest, false, radius);
+    if (step.error && !step.waiting && this.viaArrival()) return false;
     if (step.waiting || step.error) {
       t.travel = null; t.retryAt = now() + 5000; t.progressAt = now();
       this.message = 'Town movement to the ' + this.role(t.phase) + ': waiting; retrying collision route. ' + (step.error || 'Waiting for collision coverage.');
@@ -4554,7 +4598,8 @@ const Town = {
       }
     } else if (t.phase.startsWith('walk-')) {
       const role = t.phase.slice(5);
-      if (this.walk(c[role]) && this.trip) this.enter('open-' + role);
+      if (role === 'arrival') { if (this.walk(c.arrival) && this.trip) this.enter(t.resume); }
+      else if (this.walk(c[role]) && this.trip) this.enter('open-' + role);
     } else if (t.phase.startsWith('open-')) {
       const role = t.phase.slice(5), kind = role === 'storage' ? 'storage-open' : role === 'gate' ? 'npc-talk' : 'shop-open';
       if (this.open(role, kind) && this.trip) this.enter({ storage: 'store', vendor: 'buy', smith: 'sell', gate: 'reverse' }[role]);
@@ -5564,6 +5609,7 @@ Hunt.tick = function () {
 };
 
 function stopAll() {
+  AutoStart.cancel('Auto-start cancelled.');
   Town.record('stop');
   Alchemy.stop();
   Trade.cancel();
@@ -5663,6 +5709,7 @@ const Controller = {
   tick() {
     try {
       this.guard('Reconnect', () => Reconnect.tick());
+      this.guard('Auto-start', () => AutoStart.tick());
       Restock.sample();
       Alchemy.tick();
       BuffGear.resume();
@@ -6790,6 +6837,74 @@ bus.on('phase', phase => {
   if (['disconnected', 'failed', 'reconnecting'].includes(phase)) Reconnect.lost();
 });
 Hook.observers.push(command => Reconnect.manual(command?.kind));
+
+
+const AUTO_START_SETTLE_MS = 5000;
+const AUTO_START_NAV_MS = 20000;
+const AUTO_START_GIVE_UP_MS = 120000;
+const AutoStart = {
+  armed: true, entry: null, message: '',
+  on() { return !!Settings.profile.hunt.autoStart; },
+  pending() { return !!this.entry && this.on(); },
+  status() {
+    if (!this.on()) return 'Off.';
+    return this.message || 'Waits for the next time this character enters the game.';
+  },
+  cancel(reason = '') {
+    if (!this.entry) return;
+    this.entry = null;
+    if (reason) { this.message = reason; Log.info(reason); }
+  },
+  waiting(entry) {
+    const gp = World.gp;
+    if (!World.local() || !Array.isArray(gp?.inventory) || gp.inventoryPending) return 'waiting for the character to load.';
+    const left = AUTO_START_SETTLE_MS - (now() - entry.at);
+    if (left > 0) return 'starting in ' + Math.ceil(left / 1000) + ' s.';
+    if (now() - Manual.lastAt < Hunt.cfg().manualPauseS * 1000) return 'waiting for the manual-control pause.';
+    const pose = World.pose();
+    if (!Navigation.scene && pose && !(pose.regionId & DUNGEON) && now() - entry.at < AUTO_START_NAV_MS) return 'waiting for collision data.';
+    return '';
+  },
+  tick() {
+    if (!World.inWorld()) return;
+    if (this.armed) { this.armed = false; this.entry = { at: now() }; }
+    const entry = this.entry;
+    if (!entry) return;
+    if (Reconnect.active()) return this.cancel('Auto-start skipped: reconnect is bringing the bot back.');
+    if (Hunt.running || Town.trip || WalkBack.active || Trade.run || Alchemy.run || Alchemy.pending || Restock.recording) return this.cancel();
+    if (World.charName && Settings.profileKey !== 'profile:' + World.charName) { this.message = 'Auto-start: waiting for the character settings.'; return; }
+    if (!this.on()) { this.entry = null; return; }
+    if (!Hunt.cfg().center) {
+      this.cancel('Auto-start: no hunting spot is saved. Set one in Combat → Hunt area.');
+      return UI.toast(this.message, 'warn', 6000);
+    }
+    const wait = this.waiting(entry);
+    if (wait) {
+      this.message = 'Auto-start: ' + wait;
+      if (now() - entry.at > AUTO_START_GIVE_UP_MS) this.cancel('Auto-start gave up: the game did not settle within 2 minutes.');
+      return;
+    }
+    this.entry = null;
+    if (World.isDead()) {
+      if (!Town.autoRevive() && Hunt.cfg().onDeath === 'stop') {
+        this.message = 'Auto-start: the character is dead and On death is set to Stop, so the bot was not started.';
+        Log.info(this.message); UI.toast(this.message, 'warn', 6000);
+        return;
+      }
+      Hunt.start();
+      this.message = Hunt.running ? 'Auto-start: started. The character is dead, so it revives and returns first.' : 'Auto-start: the bot could not start.';
+      Log.info(this.message);
+      return;
+    }
+    Controller.resumeHunting('Auto-start');
+    this.message = Town.trip ? 'Auto-start: in town. Doing town services, then back to the hunting spot.'
+      : WalkBack.active ? 'Auto-start: walking to the hunting spot.'
+      : Hunt.running ? 'Auto-start: hunting started at the hunting spot.'
+      : 'Auto-start: the bot could not start. ' + (Town.message.startsWith('Town cycle stopped:') ? Town.message : 'Check the log.');
+    Log.info(this.message);
+  },
+};
+bus.on('phase', (phase, previous, left) => { if (left) { AutoStart.armed = true; AutoStart.entry = null; } });
 
 
 // Spends skill points automatically, one confirmed training at a time: first the masteries you tick, then
@@ -9879,7 +9994,7 @@ const Diagnostics = {
     }
     if (WalkBack.active) return WalkBack.status();
     if (Restock.trip || Resurrect.trip) return 'Travelling; waiting to reach the destination.';
-    if (!Hunt.running) return 'Bot stopped.';
+    if (!Hunt.running) return AutoStart.pending() ? AutoStart.message || 'Auto-start: waiting.' : 'Bot stopped.';
     if (now() - Manual.lastAt < Hunt.cfg().manualPauseS * 1000) return 'Hunting paused after manual control.';
     if (Restock.activeShop() || World.gp?.storage) return 'Hunting paused: close shop or storage.';
     if (Hunt.state === 'resting' || Hunt.state === 'standing') return 'Recovering HP / MP.';
@@ -9920,7 +10035,7 @@ const Diagnostics = {
       joinRequest: !!matching?.request, acceptanceSent: !!matching?.request && Party.answered === `${matching.request.a}:${matching.request.b}:${matching.request.expires}`,
       requestRemainingMs: Number.isFinite(World.simNow()) && Number.isFinite(matching?.request?.expires) ? Math.max(0, matching.request.expires - World.simNow()) : null,
       townActive: !!Town.trip,
-      townPhase: ['recall', 'recall-wait', 'revive-arrival', 'walk-storage', 'open-storage', 'store', 'close-storage', 'walk-vendor', 'open-vendor', 'buy', 'close-vendor', 'walk-smith', 'open-smith', 'sell', 'repair', 'close-smith', 'walk-gate', 'open-gate', 'reverse', 'reverse-wait'].includes(Town.trip?.phase) ? Town.trip.phase : null,
+      townPhase: ['recall', 'recall-wait', 'revive-arrival', 'walk-arrival', 'walk-storage', 'open-storage', 'store', 'close-storage', 'walk-vendor', 'open-vendor', 'buy', 'close-vendor', 'walk-smith', 'open-smith', 'sell', 'repair', 'close-smith', 'walk-gate', 'open-gate', 'reverse', 'reverse-wait'].includes(Town.trip?.phase) ? Town.trip.phase : null,
       scrollAttempts: this.number(Town.trip?.scrollAttempts), scrollAccepted: !!Town.trip?.scrollRequest?.accepted,
       returnScroll: !!Town.scroll(0x09ec), reverseScroll: !!Town.scroll(0x19ec),
       settings: { autoRecruit: !!c.party.autoRecruit, autoAccept: !!c.party.autoAcceptMatching,
@@ -9930,7 +10045,7 @@ const Diagnostics = {
         buyCure: !!Restock.cfg().cure.on, cureTarget: this.number(Restock.cfg().cure.target), cureLow: this.number(Restock.cfg().cure.low),
         hpLow: this.number(Restock.cfg().hp.low), mpLow: this.number(Restock.cfg().mp.low),
         collectDrops: !!c.hunt.pickup.enabled, petCollector: Loot.petMode(), follow: Settings.profile.trace.enabled ? Trace.code : '', autoStatPoints: Settings.profile.statPoints.enabled ? String(StatPoints.status()).slice(0, 200) : '', autoMastery: AutoMastery.active() ? String(AutoMastery.message).slice(0, 600) : '', trapStage: Trap.stage, trapTile: Trap.stage ? Trap.tile : '', characterCollects: Loot.categories.some(k => c.hunt.pickup[k] && Loot.collectorFor(k) === 'character'), pickupRadius: this.number(c.hunt.pickup.radius / 10),
-        finishFight: !!c.hunt.pickup.afterKillOnly, speedScroll: !!c.potion.speedScroll }
+        finishFight: !!c.hunt.pickup.afterKillOnly, speedScroll: !!c.potion.speedScroll, autoStart: !!c.hunt.autoStart }
     };
   },
   sample() {
@@ -11643,7 +11758,11 @@ const UI = {
   },
   section_settingsBehaviour(host) {
     const H = () => Settings.profile.hunt, M = () => Settings.profile.macro, P = () => Settings.profile.potion, C = () => Restock.cfg();
+      this.autoStartNote = el('p', AutoStart.status(), 'muted');
       host.append(this.group('Behaviour',
+        this.check('Start the bot when this character enters the game', () => H().autoStart, v => { H().autoStart = v; this.autoStartNote.textContent = AutoStart.status(); }),
+        el('p', 'About 5 seconds after the character is in the game: at the hunting spot it starts hunting; in the town of your saved town services it does them and reverses back (needs the scroll town cycle); anywhere else it walks back; dead, it revives first. Only once per entry. Stop, F8 or a reconnect cancel it.', 'muted'),
+        this.autoStartNote,
         ...(Town.autoRevive() ? [el('p', 'On death: the town cycle revives you in town and reverses back (Town → Scroll town cycle).', 'muted')]
           : [this.select('On death', [['stop', 'Stop'], ['wait', 'Wait'], ['revive', 'Revive and walk back']], () => H().onDeath, v => H().onDeath = v)]),
         this.check('Rest when low', () => H().sit.enabled, v => { H().sit.enabled = v; this.draw(); }),
@@ -11856,6 +11975,7 @@ const UI = {
     if (this.is('Settings') && AutoMastery.maxNote) AutoMastery.maxNote.textContent = AutoMastery.maxMessage;
     if (this.is('Settings') && StatPoints.note) StatPoints.note.textContent = StatPoints.status();
     if (this.stuckNote) this.stuckNote.textContent = AntiStuck.status();
+    if (this.autoStartNote) this.autoStartNote.textContent = AutoStart.status();
     if (this.is('Party') && Trace.note) Trace.note.textContent = Trace.status();
     if (Lure.note) Lure.note.textContent = Lure.status();
     if (this.is('Party') && this.partyNote) {
@@ -12448,7 +12568,7 @@ Activity.userMessage = function( entry ) {
 		const phase = entry.text.replace( /^Town phase: /, "" );
 		const phases = {
 			recall: "Preparing to return to town.", "recall-wait": "Returning to town…",
-			"revive-arrival": "Waiting to revive in town.", "walk-storage": "Walking to the warehouse.",
+			"revive-arrival": "Waiting to revive in town.", "walk-arrival": "Walking to the town start.", "walk-storage": "Walking to the warehouse.",
 			"open-storage": "Opening the warehouse.", store: "Depositing loot.", "close-storage": "Finished at the warehouse.",
 			"walk-vendor": "Walking to the potion merchant.", "open-vendor": "Opening the potion shop.",
 			buy: "Buying supplies.", "close-vendor": "Finished buying supplies.",

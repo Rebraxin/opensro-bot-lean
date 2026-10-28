@@ -3,7 +3,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync(__dirname + '/bot.lean.user.js', 'utf8');
 const isolated = source.slice(0, source.lastIndexOf('installWorkerHook();')) +
-  'globalThis.bot = {RenderControl, Activity, World, Settings, Updates, Diagnostics, Reports, Alchemy, BuffGear, Icons, Hook, Cmd, Hunt, Loot, Restock, Trade, WalkBack, Navigation, Route, Learned, Display, Wardrobe, WdData, LeanWardrobe, Controller, UI, Stats, Combat, Potion, Party, Town, bus, Manual, Resurrect, Support, ItemRules, SpeedScroll, RepairHammer, Log, AntiStuck, Chase, Trap, botProfile, ItemRules, Items, AutoMastery, StatPoints, ProfileShare, Setup, Trace, DEFAULT_PROFILE, PetPotion, Reconnect, Reconnect, Lure, stopAll, toggleBot, boot, Ticker, Sound, LeanMap};\n})();';
+  'globalThis.bot = {AutoStart, RenderControl, Activity, World, Settings, Updates, Diagnostics, Reports, Alchemy, BuffGear, Icons, Hook, Cmd, Hunt, Loot, Restock, Trade, WalkBack, Navigation, Route, Learned, Display, Wardrobe, WdData, LeanWardrobe, Controller, UI, Stats, Combat, Potion, Party, Town, bus, Manual, Resurrect, Support, ItemRules, SpeedScroll, RepairHammer, Log, AntiStuck, Chase, Trap, botProfile, ItemRules, Items, AutoMastery, StatPoints, ProfileShare, Setup, Trace, DEFAULT_PROFILE, PetPotion, Reconnect, Reconnect, Lure, stopAll, toggleBot, boot, Ticker, Sound, LeanMap};\n})();';
 function fixture(document) {
   let time = 100000;
   const storage = new Map(), commands = [], notices = [], intervals = [], timers = [];
@@ -3403,16 +3403,16 @@ test('a stalled walk to a town service says why, in plain words and without NPC 
   f.Town.cancel(); assert.equal(f.Diagnostics.snapshot().townDetail, '');
 });
 test('a warehouse walk that cannot get around an obstacle is skipped, other services still stop the trip', () => {
-  const f = townFixture(); f.Town.begin(); f.Town.enter('walk-storage');
+  const f = townFixture(); f.Town.begin(); f.Town.enter('walk-storage'); f.World.gp.pose.x = 50;
   f.Navigation.watch = () => 'giveup';
   f.Town.tick();
   assert.ok(f.Town.trip, 'the trip carries on'); assert.equal(f.Town.trip.phase, 'walk-vendor');
-  const g = townFixture(); g.Town.begin(); g.Town.enter('walk-vendor');
+  const g = townFixture(); g.Town.begin(); g.Town.enter('walk-vendor'); g.World.gp.pose.x = 50;
   g.Navigation.watch = () => 'giveup';
   g.Town.tick(); assert.equal(g.Town.trip, null); assert.match(g.Town.message, /Blocked on the way to the potion merchant/);
 });
 test('town movement retries blocked routes at intervals and remains cancellable', () => {
-  const f = townFixture(); f.Town.begin(); f.Town.enter('walk-storage');
+  const f = townFixture(); f.Town.begin(); f.Town.enter('walk-storage'); f.World.gp.pose.x = 50;
   let plans = 0;
   f.Navigation.next = () => { plans++; return { error: 'No walkable route found.' }; };
   const moves = f.commands.filter(c => c.kind === 'move').length;
@@ -4700,6 +4700,116 @@ test('F6 minimises and restores the panel like the ×, and the game never sees t
   assert.equal(f.UI.root.host.hidden, false, 'a panel hidden with Shift+F7 comes back');
   assert.deepEqual(minimised, [true, false, false]);
   assert.equal(f.Hunt.running, false); assert.equal(f.commands.length, 0, 'F6 never starts or stops the bot');
+});
+function autoStartFixture(f = fixture()) { f.Settings.profile.hunt.autoStart = true; return f; }
+const manualMove = f => f.Hook.observers.forEach(fn => fn({ kind: 'gameplay', command: { kind: 'move' } }));
+test('auto-start is off by default; on, it starts hunting at the spot once the game settles, once per entry', () => {
+  let f = fixture(); f.Controller.tick(); f.advance(6000); f.Controller.tick();
+  assert.equal(f.Settings.profile.hunt.autoStart, false); assert.equal(f.Hunt.running, false, 'off by default');
+  f = autoStartFixture(); f.Controller.tick();
+  assert.equal(f.Hunt.running, false, 'waits for the game to settle'); assert.match(f.Diagnostics.main(), /^Auto-start: starting in \d s\.$/);
+  f.advance(5000); f.Controller.tick();
+  assert.equal(f.Hunt.running, true); assert.match(f.AutoStart.message, /hunting started at the hunting spot/);
+  f.stopAll(); f.advance(10000); f.Controller.tick(); assert.equal(f.Hunt.running, false, 'a stop by the player holds for this entry');
+  f.bus.emit('phase', 'entering-world', 'world', false); f.advance(10000); f.Controller.tick();
+  assert.equal(f.Hunt.running, false, 'a teleport is not a new entry');
+  f.World.phase = 'character'; f.bus.emit('phase', 'character', 'world', true); f.Controller.tick(); f.World.phase = 'world';
+  f.Controller.tick(); assert.equal(f.Hunt.running, false);
+  f.advance(5000); f.Controller.tick(); assert.equal(f.Hunt.running, true, 'entering the game again starts it again');
+});
+test('auto-start waits out manual control and gives way to the player and to a reconnect', () => {
+  let f = autoStartFixture(); f.Controller.tick(); f.advance(4000); manualMove(f);
+  f.advance(1500); f.Controller.tick(); assert.equal(f.Hunt.running, false); assert.match(f.AutoStart.message, /manual-control pause/);
+  f.advance(6000); f.Controller.tick(); assert.equal(f.Hunt.running, true, 'starts once the manual pause is over');
+  f = autoStartFixture(); f.Controller.tick(); f.stopAll(); f.advance(10000); f.Controller.tick();
+  assert.equal(f.Hunt.running, false); assert.match(f.AutoStart.message, /cancelled/);
+  f = autoStartFixture(); f.Controller.tick(); f.toggleBot(); assert.equal(f.Hunt.running, true);
+  f.Controller.tick(); assert.equal(f.AutoStart.entry, null, 'started by the player: nothing left to do');
+  const r = reconnectFixture(); autoStartFixture(r.f); r.f.Hunt.stop(); r.lose(); r.back();
+  for (let i = 0; i < 6; i++) { r.f.advance(4000); r.f.Controller.tick(); }
+  assert.equal(r.f.Hunt.running, false, 'the player had stopped the bot; the reconnect owns this entry and does not start it');
+  assert.match(r.f.AutoStart.message, /reconnect/);
+});
+test('auto-start in the town of the saved services does the town services, then reverses to the hunting spot', () => {
+  const f = townFixture(); autoStartFixture(f); f.Hunt.stop();
+  f.Town.detect = () => ({ key: 'KT' }); f.Settings.profile.hunt.center = { regionId: 1, x: 1500, y: 0, z: 100 };
+  f.World.gp.pose.x = 60; f.Controller.tick(); f.advance(5000); f.Controller.tick();
+  assert.ok(f.Town.trip, f.Town.message); assert.equal(f.Town.trip.revival, true, 'a revival-style trip: no return scroll in town');
+  assert.equal(f.Town.trip.phase, 'walk-storage'); assert.equal(f.Hunt.running, true);
+  assert.equal(f.commands.some(c => c.kind === 'item-use'), false, 'no return scroll is used');
+  assert.match(f.AutoStart.message, /in town\. Doing town services, then back to the hunting spot/);
+});
+test('auto-start away from the spot outside town walks back; dead it revives first; without a spot it says so', () => {
+  let f = autoStartFixture(); f.World.gp.pose.x = 1800; f.Controller.tick(); f.advance(5000); f.Controller.tick();
+  assert.ok(f.WalkBack.active); assert.match(f.AutoStart.message, /walking to the hunting spot/);
+  f = autoStartFixture(); f.World.isDead = () => true; f.Controller.tick(); f.advance(5000); f.Controller.tick();
+  assert.equal(f.Hunt.running, false); assert.match(f.AutoStart.message, /On death is set to Stop/);
+  f = autoStartFixture(); f.World.isDead = () => true; f.Hunt.cfg().onDeath = 'revive'; f.Controller.tick(); f.advance(5000); f.Controller.tick();
+  assert.equal(f.Hunt.running, true); assert.match(f.AutoStart.message, /revives and returns first/);
+  f = autoStartFixture(); f.Settings.profile.hunt.center = null; f.Controller.tick();
+  assert.equal(f.Hunt.running, false); assert.ok(f.notices.some(n => /no hunting spot is saved/.test(n)));
+  f = autoStartFixture(); f.World.gp.inventoryPending = true; f.Controller.tick(); f.advance(8000); f.Controller.tick();
+  assert.equal(f.Hunt.running, false); assert.match(f.AutoStart.message, /waiting for the character to load/);
+  f.World.gp.inventoryPending = false; f.Controller.tick(); assert.equal(f.Hunt.running, true);
+  f = fixture(); f.storage.set('sroBotLean:v1:profile:Hero', JSON.stringify({ hunt: { autoStart: true, center: { regionId: 1, x: 100, y: 0, z: 100 } } }));
+  f.World.charName = 'Hero'; f.Controller.tick(); f.advance(5000); f.Controller.tick();
+  assert.equal(f.Hunt.running, false, 'the default profile is not read as the character\'s choice');
+  assert.match(f.AutoStart.message, /waiting for the character settings/);
+  f.Settings.useCharacter('Hero'); f.Controller.tick(); assert.equal(f.Hunt.running, true, 'the character\'s own setting decides');
+});
+test('a walk that starts on a blocked tile or against a wall steps out to open ground first, never through the wall', () => {
+  const wall = { x: 0, y: 0, z: 0, yaw: 0, mesh: { vertices: [200,0,0,200,0,1920], edges: [0,1,0,65535,3,0] } };
+  let f = fixture(); f.Navigation.capture({ kind: 'gameplay', command: { kind: 'navigation', bundle: navProduct([wall]) } });
+  const owner = {}, goal = { regionId: 1, x: 100, y: 0, z: 100 };
+  f.World.gp.pose = { regionId: 1, x: 199, y: 0, z: 100 };
+  assert.equal(f.Navigation.pointStatus(f.World.pose()), 'blocked', 'right against the wall');
+  assert.equal(f.Navigation.plan(f.World.pose(), goal).length, 0, 'no route from there');
+  let step = f.Navigation.next(owner, goal);
+  assert.equal(step.stepOut, true); assert.ok(step.point.x < 200, 'steps away from the wall, not through it');
+  assert.equal(f.Navigation.pointStatus(step.point), 'open');
+  f.World.gp.pose = { ...step.point }; step = f.Navigation.next(owner, goal);
+  assert.ok(step.point && !step.stepOut, 'from open ground the normal route takes over');
+  f.World.gp.pose = { regionId: 1, x: 201, y: 0, z: 100 };
+  assert.ok(f.Navigation.next({}, { ...goal, x: 400 }).point.x > 200, 'the other side steps out on its own side');
+  const blocked = new Uint8Array(9216); blocked[5 * 96 + 5] = 1;
+  f = fixture(); f.Navigation.install(navProduct([], blocked)); f.World.gp.pose = { regionId: 1, x: 110, y: 0, z: 110 };
+  assert.equal(f.Navigation.pointStatus(f.World.pose()), 'blocked', 'standing on a blocked tile');
+  step = f.Navigation.next({}, { regionId: 1, x: 500, y: 0, z: 110 });
+  assert.equal(step.stepOut, true); assert.equal(f.Navigation.pointStatus(step.point), 'open');
+  f.World.gp.pose = { regionId: 1, x: 300, y: 0, z: 300 }; assert.equal(f.Navigation.stepOut(f.World.pose()), null, 'open ground needs no step out');
+});
+test('auto-start in town on a blocked spot steps out, walks to the warehouse with real routing and opens it', () => {
+  const f = townFixture(); autoStartFixture(f); f.Hunt.stop();
+  const blocked = new Uint8Array(9216); blocked[5 * 96 + 1] = 1;
+  f.Navigation.install(navProduct([], blocked));
+  f.Town.detect = () => ({ key: 'KT' }); f.Settings.profile.hunt.center = { regionId: 1, x: 1500, y: 0, z: 100 };
+  f.World.gp.pose = { regionId: 1, x: 30, y: 0, z: 110 };
+  assert.equal(f.Navigation.pointStatus(f.World.pose()), 'blocked');
+  const moves = [];
+  for (let n = 0; n < 40 && f.Town.trip?.phase !== 'open-storage'; n++) {
+    const sent = f.commands.length; f.advance(1000); f.Controller.tick();
+    for (const c of f.commands.slice(sent)) if (c.kind === 'move') { moves.push({ ...c.destination }); f.World.gp.pose = { ...c.destination }; }
+  }
+  assert.equal(f.Town.trip?.phase, 'open-storage', f.Town.message);
+  const steps = moves.filter(m => Math.hypot(m.x - 30, m.z - 110) > 1);
+  assert.ok(steps.length >= 2); assert.equal(f.Navigation.pointStatus(steps[0]), 'open', 'the first step leaves the blocked tile');
+  assert.ok(Math.hypot(steps[0].x - 30, steps[0].z - 110) <= 40, 'a short step out, not a long blind walk');
+  assert.equal(f.commands.some(c => c.kind === 'item-use'), false);
+});
+test('a town walk that is stuck goes to the town start first, then on to the service, without looping', () => {
+  const f = townFixture(); f.Town.begin(); f.Town.enter('walk-storage');
+  let stuck = 1; f.Navigation.watch = () => (stuck-- > 0 ? 'giveup' : '');
+  f.Town.tick();
+  assert.equal(f.Town.trip.phase, 'walk-arrival'); assert.match(f.Town.message, /no way to the warehouse from here; going to the town start first/);
+  f.World.gp.pose.x = 100; f.Town.tick(); assert.equal(f.Town.trip.phase, 'walk-storage', 'at the town start it heads for the service again');
+  f.World.gp.pose.x = 40; stuck = 1; f.Town.tick();
+  assert.equal(f.Town.trip.phase, 'walk-vendor', 'stuck again on the same walk: the old fallback, no second detour');
+  const g = townFixture(); g.Town.begin(); g.Town.enter('walk-vendor');
+  let plans = 0; g.Navigation.next = () => { plans++; return { error: 'No walkable route found.' }; };
+  for (let i = 0; i < 6; i++) { g.advance(100); g.Town.tick(); }
+  assert.equal(plans, 3, 'one try via the town start, then the usual timed retries');
+  assert.equal(g.Town.trip.phase, 'walk-vendor'); assert.match(g.Town.message, /waiting; retrying collision route/);
+  assert.equal(g.Log.lines.filter(l => /going to the town start first/.test(l.text)).length, 1);
 });
 
 

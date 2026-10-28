@@ -22,7 +22,7 @@ The **Setup** page checks all this for you and fixes the next missing thing.
 - Optional selling of ordinary gear from the character bag on town trips (off by default)
 - Item alchemy, auto mastery and skills, stat points
 - Auto trade: buy specialty goods in one town, walk to another and sell them (needs a trader suit and a transport)
-- Automatic reconnect, walk-back after death, anti-stuck, obstacle detours
+- Automatic reconnect, optional start on entering the game, walk-back after death, anti-stuck, obstacle detours
 - Minimap, session stats, wardrobe, share and import settings
 
 Settings are saved per character.

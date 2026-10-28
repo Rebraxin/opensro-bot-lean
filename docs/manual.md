@@ -134,6 +134,17 @@ If hunting was running when the character died, it resumes after a resurrection 
 
 For your other accounts. On the **Party** page tick **Join the main account's party** and type the main character's name. While the character is not in a party, the bot accepts a party invitation from that character, or pages the party-matching board for their listing and applies to it (every 20 seconds at most). It does nothing while the character is in another party, and stops when the party is full or the character's level is outside the listing's range; the status line says which. The main account needs **Auto-recruit** and **Auto-accept party-matching joins** ticked and must not use this option itself. After a disconnect the party is rejoined as soon as automatic reconnect has the character back in the game.
 
+## Starting the bot when you enter the game
+
+Tick **Start the bot when this character enters the game** under **Settings → Behaviour** (off by default, saved per character). Each time the character enters the game (after logging in or after going back to character select), the bot waits about 5 seconds for the game to settle: the character loaded, the inventory known, no manual-control pause, and collision data for up to 20 more seconds. Then it continues from where the character stands, the same way as after a reconnect:
+
+- **At the hunting spot:** it starts hunting.
+- **In the town of your saved town services, far from the spot:** with the scroll town cycle on, it does the town services from where it stands, without a return scroll, and reverses back to the hunting spot.
+- **Anywhere else:** it walks back to the hunting spot, as **Return & hunt** does.
+- **Dead:** it starts hunting so your death handling revives it and returns. With **On death: Stop** and the town revive off, it stays stopped and says so.
+
+It acts once per entry. A teleport or a town scroll is not a new entry. Pressing **Stop all**, **F8** or **Start / stop** before it fires cancels it for that entry, and after a reconnect the reconnect decides, so a bot you had stopped stays stopped. Without a saved hunting spot it does nothing and tells you. The status line shows what it is waiting for.
+
 ## Automatic reconnect
 
 This is always on; there is no switch. When the connection to the game is lost (a server restart, a network drop), the bot waits for the game's own retries, then asks the game to resume, and if that fails re-enters the world with the login the page already holds, exactly like pressing Enter at character select. It keeps trying every few seconds, then every 30 seconds, for up to 12 hours. It never types or stores your password: if the login itself is gone after a restart, the status line says so and the bot waits for you.
@@ -273,6 +284,8 @@ The **×** at the top right of the panel, or **F6**, minimises it to a small ico
 ## If a town trip stalls on the way to a merchant
 
 The main panel's status line and Send bug report now name what the walk is waiting for, for example "Town movement to the potion merchant: waiting; retrying collision route. No walkable route found through the loaded collision map." The bot never walks blindly through obstacles, so it keeps retrying until the route works or you press F8.
+
+Before it retries, two things happen on their own. If the character stands where the collision map has no way out (on a blocked tile or right against a wall, which can happen after logging in), it first takes a short step to the nearest open ground that is not behind a wall. And if a walk to a service finds no route or cannot get around an obstacle, it walks to the town start (the saved arrival point, where the return scroll lands) once and tries the service again from there.
 
 - **"Waiting for game collision data" / "Waiting for collision coverage":** the game has not given the bot a collision map for the town you arrived in. Reload the game and try again.
 - **"No walkable route found":** save that service point again from open ground a few steps in front of the NPC (stop hunting, stand there, select the NPC and click its Save button).

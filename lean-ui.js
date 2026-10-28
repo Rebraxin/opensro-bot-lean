@@ -1013,7 +1013,11 @@ const UI = {
   },
   section_settingsBehaviour(host) {
     const H = () => Settings.profile.hunt, M = () => Settings.profile.macro, P = () => Settings.profile.potion, C = () => Restock.cfg();
+      this.autoStartNote = el('p', AutoStart.status(), 'muted');
       host.append(this.group('Behaviour',
+        this.check('Start the bot when this character enters the game', () => H().autoStart, v => { H().autoStart = v; this.autoStartNote.textContent = AutoStart.status(); }),
+        el('p', 'About 5 seconds after the character is in the game: at the hunting spot it starts hunting; in the town of your saved town services it does them and reverses back (needs the scroll town cycle); anywhere else it walks back; dead, it revives first. Only once per entry. Stop, F8 or a reconnect cancel it.', 'muted'),
+        this.autoStartNote,
         ...(Town.autoRevive() ? [el('p', 'On death: the town cycle revives you in town and reverses back (Town → Scroll town cycle).', 'muted')]
           : [this.select('On death', [['stop', 'Stop'], ['wait', 'Wait'], ['revive', 'Revive and walk back']], () => H().onDeath, v => H().onDeath = v)]),
         this.check('Rest when low', () => H().sit.enabled, v => { H().sit.enabled = v; this.draw(); }),
@@ -1226,6 +1230,7 @@ const UI = {
     if (this.is('Settings') && AutoMastery.maxNote) AutoMastery.maxNote.textContent = AutoMastery.maxMessage;
     if (this.is('Settings') && StatPoints.note) StatPoints.note.textContent = StatPoints.status();
     if (this.stuckNote) this.stuckNote.textContent = AntiStuck.status();
+    if (this.autoStartNote) this.autoStartNote.textContent = AutoStart.status();
     if (this.is('Party') && Trace.note) Trace.note.textContent = Trace.status();
     if (Lure.note) Lure.note.textContent = Lure.status();
     if (this.is('Party') && this.partyNote) {
