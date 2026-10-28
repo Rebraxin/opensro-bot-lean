@@ -251,7 +251,7 @@ const Controller = {
       if (WalkBack.active) { this.mode = 'returning'; WalkBack.tick(); }
       else if (Restock.recording) this.mode = 'recording';
       else if (Hunt.running) { if (!Trace.tick()) Hunt.tick(); this.mode = Restock.trip ? 'shopping' : Hunt.state; }
-      else this.mode = 'idle';
+      else { Loot.idleTick(); this.mode = 'idle'; }
     } catch (e) {
       stopAll();
       if (now() - this.lastErrorAt > 5000) { this.lastErrorAt = now(); Log.error(e.message || String(e)); UI.toast('Bot stopped: ' + e.message, 'warn'); }

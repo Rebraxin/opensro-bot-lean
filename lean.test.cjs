@@ -117,6 +117,19 @@ test('pet disables only native auto-grab bit and waits for server confirmation',
   pet.commandMode = 0x147; assert.equal(f.Loot.preparePet(), true);
   assert.equal(f.Loot.begin(d), true); assert.equal(f.commands.at(-1).kind, 'cos-pickup');
 });
+test('pet keeps collecting while the bot is stopped, and the character does not', () => {
+  const f = fixture(), pet = pickupPet(f, 0x147); f.drop(20, 3436);
+  assert.equal(f.Hunt.running, false);
+  f.advance(60000); f.Controller.tick();
+  assert.deepEqual(JSON.parse(JSON.stringify(f.commands.at(-1))), { kind: 'cos-pickup', gid: 50, target: 20 });
+  assert.equal(f.Loot.active.petGid, 50);
+  const f2 = fixture(); pickupPet(f2, 0x1c7); f2.drop(20, 3436);
+  f2.Controller.tick();
+  assert.equal(f2.commands.length, 0, 'auto-grab is left alone while stopped');
+  const f3 = fixture(); f3.Settings.profile.hunt.pickup.by = { elixirs: 'character' }; f3.Settings.profile.hunt.pickup.collector = 'character'; f3.Loot.preset('elixirs'); f3.drop(20, 3436);
+  f3.Controller.tick();
+  assert.equal(f3.commands.some(c => c.kind === 'pickup' || c.kind === 'cos-pickup'), false);
+});
 test('an Items rule to always pick an item works with its kind switched off, and leaves the other items of that kind alone', () => {
   const f = fixture(), P = f.Settings.profile.hunt.pickup;
   f.Loot.preset('elixirs'); P.potions = false;
@@ -266,13 +279,14 @@ test('pet configuration retries are bounded and resummoning resets setup', () =>
   assert.equal(f.commands.length, 3); assert.match(f.Loot.petStatus(), /not disabled/);
   pet.commandMode = 7; assert.equal(f.Loot.preparePet(), true); assert.equal(f.Loot.petSetup, null);
 });
-test('pet retries retain pet recipient and stop prevents further pickups', () => {
+test('pet retries retain pet recipient and stopping hands the drop to the idle pet, never the character', () => {
   const f = fixture(); pickupPet(f); const d = f.drop(20, 3436); f.Loot.begin(d);
   f.advance(9000); f.Loot.tick(); f.advance(800); f.Loot.tick();
   assert.equal(f.commands.filter(c => c.kind === 'cos-pickup').length, 2);
   assert.equal(f.commands.some(c => c.kind === 'pickup'), false);
   f.stopAll(); f.advance(1000); f.Controller.tick();
-  assert.equal(f.commands.filter(c => c.kind === 'cos-pickup').length, 2);
+  assert.equal(f.commands.filter(c => c.kind === 'cos-pickup').length, 3);
+  assert.equal(f.commands.some(c => c.kind === 'pickup'), false);
 });
 test('hunt controller waits for pet settings, then collects with the pet only', () => {
   const f = fixture(), pet = pickupPet(f, 135); f.drop(20, 3436); f.Hunt.start();
