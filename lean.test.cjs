@@ -3603,13 +3603,15 @@ test('pet summon scrolls and flutes are never sold, from the pet or the bag, eve
   for (const s of summons) { assert.equal(f.Town.sellable(s), false, s.name); assert.equal(f.Town.sellableBag({ slot: 40, ...s }), false, s.name); }
 });
 
-test('Sell Star / Moon / Sun gear too sells SoX instead of depositing it', () => {
+test('Sell Star gear too sells Star instead of depositing it, and leaves Moon and Sun', () => {
   const f = townFixture(); f.Town.cfg().sellBag = true; f.Town.cfg().storeSox = true; f.Town.cfg().keep = '';
   f.Items.data.set(1400, { name: 'Star blade', code: 'ITEM_CH_SWORD_11_A_RARE' });
   const sox = { slot: 60, refObjId: 1400, name: 'Star blade', typeFlags: 44 | (6 << 7), quantity: 1, magic: [], codename: 'ITEM_CH_SWORD_11_A_RARE', tooltip: { fields: { rarity: 2, itemClass: 1 } } };
   assert.deepEqual([f.Town.depositItem(sox), f.Town.sellable(sox), f.Town.sellableBag(sox)], [true, false, false], 'default: SoX is deposited');
-  f.Town.cfg().sellSox = true;
+  f.Town.cfg().sellStar = true;
   assert.deepEqual([f.Town.depositItem(sox), f.Town.sellable(sox), f.Town.sellableBag(sox)], [false, true, true], 'switch on: SoX is sold');
+  const moon = { ...sox, slot: 61, refObjId: 1401, name: 'Moon blade', codename: 'ITEM_CH_SWORD_11_B_RARE', tooltip: { fields: { rarity: 2, itemClass: 2 } } };
+  assert.deepEqual([f.Town.depositItem(moon), f.Town.sellable(moon)], [true, false], 'Moon is still deposited');
   f.Town.cfg().keep = 'star blade';
   assert.equal(f.Town.sellable(sox), false, 'Keep names still protect it');
 });

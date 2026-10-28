@@ -188,7 +188,7 @@ const Town = {
         splitList(c.keep).some(s => name.includes(s))) return false;
     // Native rarity 2 covers seal tiers. Plus and blue options do not protect
     // ordinary gear; unknown rarity still means keep it rather than guess.
-    if (ItemType.isEquipment(tf) && !(c.sellSox && Items.soxOf(item) > 0) && (![0, 1].includes(item.tooltip?.fields?.rarity) ||
+    if (ItemType.isEquipment(tf) && !(c.sellStar && Items.soxOf(item) === 1) && (![0, 1].includes(item.tooltip?.fields?.rarity) ||
         /_(RARE|MAGIC|LEGEND|MYTH)(?:_HONOR)?$/i.test(item.codename || ''))) return false;
     return true;
   },
@@ -228,7 +228,7 @@ const Town = {
     }
     if (!Number.isInteger(item.typeFlags) || !ItemType.isEquipment(item.typeFlags)) return false;
     const level = this.requiredLevel(item);
-    if (!(c.storeSox && !c.sellSox && Items.soxOf(item) > 0) && !(level !== null && this.levelRanges().some(([a, b]) => level >= a && level <= b))) return false;
+    if (!(c.storeSox && !(c.sellStar && Items.soxOf(item) === 1) && Items.soxOf(item) > 0) && !(level !== null && this.levelRanges().some(([a, b]) => level >= a && level <= b))) return false;
     if (splitList(c.keep).some(s => (item.name || '').toLowerCase().includes(s))) return false;
     const key = BuffGear.key(item);
     if (BuffGear.cfg().buffSets.some(s => s.weapon === key || s.shield === key)) return false;
