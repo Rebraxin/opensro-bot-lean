@@ -4679,6 +4679,28 @@ test('diagnostic history is bounded, retained across stops and tolerates incompl
   f.World.gp = null; assert.doesNotThrow(() => JSON.parse(f.Diagnostics.report()));
   f.World.simOffset = null; assert.doesNotThrow(() => f.Diagnostics.sample());
 });
+test('F6 minimises and restores the panel like the ×, and the game never sees the key', () => {
+  const f = fixture(), keydown = [], minimised = [];
+  f.win.addEventListener = (type, fn) => { if (type === 'keydown') keydown.push(fn); };
+  f.UI.mount = f.UI.draw = f.UI.update = f.Ticker.start = () => {}; f.boot();
+  f.UI.root = { host: { hidden: false } }; f.UI.body = { hidden: false };
+  f.UI.minimise = function (on) { minimised.push(on); this.minimised = on; };
+  const press = (code, extra = {}) => {
+    const e = { isTrusted: true, repeat: false, isComposing: false, shiftKey: false, ctrlKey: false, metaKey: false, code,
+      composedPath: () => [{ tagName: 'CANVAS' }], preventDefault() { this.prevented = true; }, stopImmediatePropagation() { this.stopped = true; }, ...extra };
+    for (const fn of keydown) fn(e);
+    return e;
+  };
+  const first = press('F6');
+  assert.deepEqual(minimised, [true]); assert.equal(first.prevented, true); assert.equal(first.stopped, true, 'the game never sees F6');
+  press('F6'); assert.deepEqual(minimised, [true, false], 'a second F6 brings the panel back');
+  press('F6', { repeat: true }); press('F6', { composedPath: () => [{ tagName: 'INPUT' }] });
+  assert.deepEqual(minimised, [true, false], 'a held key or typing in a field does nothing');
+  f.UI.root.host.hidden = true; press('F6');
+  assert.equal(f.UI.root.host.hidden, false, 'a panel hidden with Shift+F7 comes back');
+  assert.deepEqual(minimised, [true, false, false]);
+  assert.equal(f.Hunt.running, false); assert.equal(f.commands.length, 0, 'F6 never starts or stops the bot');
+});
 
 
 function buffGearFixture() {
