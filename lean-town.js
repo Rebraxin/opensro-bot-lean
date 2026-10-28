@@ -77,7 +77,10 @@ const Town = {
     return [['arrow', 62], ['bolt', 10376]].filter(([kind]) => a?.[kind]?.on).map(([kind, refObjId]) => ({ kind, refObjId, low: a[kind].low, target: a[kind].target }));
   },
   ammoCount(ref) { return (World.gp?.inventory || []).filter(i => i.refObjId === ref).reduce((n, i) => n + (i.quantity ?? 1), 0); },
-  supplies() { return Restock.supplies().map(s => ({ ...s, refObjId: s.kind === 'hp' ? 8 : s.kind === 'mp' ? 15 : s.refObjId })); },
+  // Low-level towns do not sell X-Large potions: the tier found there is remembered per kind, so the low-stock
+  // check and the refill count the same potion.
+  tier: {},
+  supplies() { return Restock.supplies().map(s => ({ ...s, refObjId: this.tier[s.kind] || (s.kind === 'hp' ? 8 : s.kind === 'mp' ? 15 : s.refObjId) })); },
   status() {
     if (this.trip) return this.message + (this.trip.why ? ` (reason: ${this.trip.why})` : '');
     if (this.message.startsWith('Town cycle stopped:')) return this.message;
@@ -601,6 +604,12 @@ const Town = {
     }
     if (!s) { this.enter('close-vendor'); return; }
     const offer = shop.offers.find(o => o.refObjId === s.refObjId && (s.kind === 'scroll' || Restock.offerKind(o) === s.kind));
+    if (!offer && (s.kind === 'hp' || s.kind === 'mp')) {
+      // No X-Large here: buy the largest potion of this kind the merchant sells instead of stopping the town cycle.
+      const price = o => toBigInt(o.price);
+      const best = shop.offers.filter(o => Restock.offerKind(o) === s.kind && o.maxStack > 0).sort((x, y) => price(y) > price(x) ? 1 : price(y) < price(x) ? -1 : 0)[0];
+      if (best) { this.tier[s.kind] = s.refObjId = best.refObjId; return; }
+    }
     if (!offer || !(offer.maxStack > 0)) return this.fail(s.kind === 'scroll' ? 'Selected scroll is unavailable here.' : s.kind === 'cure' ? 'Special Universal Pill (small) is unavailable here.' : s.kind === 'vigor' ? 'The selected vigor potion size is unavailable here; choose another size in Supplies.' : 'X-Large ' + s.kind.toUpperCase() + ' potion is unavailable here.');
     const before = Restock.count(s.refObjId), room = World.items().filter(i => i.refObjId === s.refObjId).reduce((n, i) => n + Math.max(0, offer.maxStack - (i.quantity ?? 1)), 0);
     let quantity = Math.min(s.target - before, offer.purchaseLimit ?? offer.maxStack, 65535, room + Math.max(0, World.freeBagSlots() - 1) * offer.maxStack);

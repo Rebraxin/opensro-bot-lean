@@ -3656,12 +3656,13 @@ test('town rejects invalid potion counts and low-stock thresholds at the refill 
   f.Town.begin(); assert.equal(f.Town.trip, null); assert.match(f.Town.message, /low-stock/);
 });
 
-test('town never substitutes small potions if X-Large is unavailable', () => {
+test('town falls back to the merchant own MP potion instead of stopping when X-Large is unavailable', () => {
   const f = townFixture(), gp = f.World.gp;
   f.Restock.cfg().mp.refObjId = 102; f.Town.begin(); f.Town.enter('buy'); gp.target = 61;
   gp.shop = { npc: 61, offers: [{ refObjId: 102, tab: 0, slot: 0, maxStack: 100, price: '10', previews: [{ refObjId: 102, typeFlags: 4332 }] }] };
-  f.Town.buy(); assert.equal(f.Town.trip, null); assert.match(f.Town.message, /X-Large MP/);
-  assert.equal(f.commands.some(c => c.kind === 'shop-buy'), false);
+  f.Town.buy(); f.advance(1000); f.Town.buy(); assert.ok(f.Town.trip, f.Town.message);
+  assert.equal(f.commands.some(c => c.kind === 'shop-buy' && c.slot === 0), true);
+  f.Town.tier = {};
 });
 
 test('town purchase requires exact quantity gain and enough gold, without duplicate buys', () => {
@@ -5342,4 +5343,14 @@ test('buff swaps with a full bag still run when no shield has to come off, and s
   // Full bag with a shield on: it cannot come off, so the swap waits and says so.
   f = buffGearFixture(); f.World.gp.inventorySlotCount = 13 + 3;
   assert.equal(f.BuffGear.tick(), false); assert.match(f.BuffGear.waiting, /free bag slot to take off your shield/);
+});
+
+test('town buys the largest potion the merchant sells when X-Large is not offered', () => {
+  const f = townFixture(), gp = f.World.gp;
+  f.Town.tier = {}; f.Restock.cfg().hp.on = true;
+  f.Town.begin(); f.Town.enter('buy'); gp.target = 61;
+  gp.shop = { npc: 61, offers: [[101, '5', 2284], [102, '9', 2284], [103, '6', 4332], [104, '7', 4332]].map(([refObjId, price, typeFlags], slot) => ({ refObjId, slot, tab: 0, maxStack: 50, price, previews: [{ refObjId, typeFlags }] })) };
+  f.Town.buy(); assert.equal(f.Town.trip?.supplies[0].refObjId, 102, f.Town.message); assert.equal(f.Town.supplies()[0].refObjId, 102);
+  f.advance(1000); f.Town.buy(); assert.equal(f.commands.at(-1).kind, 'shop-buy'); assert.equal(f.commands.at(-1).slot, 1);
+  f.Town.tier = {};
 });
