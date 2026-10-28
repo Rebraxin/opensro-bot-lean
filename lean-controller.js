@@ -100,6 +100,7 @@ Hunt.tick = function () {
 };
 
 function stopAll() {
+  AutoStart.cancel('Auto-start cancelled.');
   Town.record('stop');
   Alchemy.stop();
   Trade.cancel();
@@ -199,6 +200,7 @@ const Controller = {
   tick() {
     try {
       this.guard('Reconnect', () => Reconnect.tick());
+      this.guard('Auto-start', () => AutoStart.tick());
       Restock.sample();
       Alchemy.tick();
       BuffGear.resume();

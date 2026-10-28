@@ -51,7 +51,7 @@ const DEFAULT_PROFILE = {
     antiStuck: { enabled: true, minutes: 3, maxRecoveries: 3 },
     detour: { enabled: true, stallMs: 2500 },
     trap: { enabled: true, seconds: 20, recall: false, diagnostics: false },
-    onDeath: 'stop', stopNoHpPotion: false, stopInvFull: false,
+    onDeath: 'stop', stopNoHpPotion: false, stopInvFull: false, autoStart: false,
     playerAlert: { enabled: false, radius: 250, pause: false }, manualPauseS: 6,
   },
 };

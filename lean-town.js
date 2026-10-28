@@ -412,7 +412,23 @@ const Town = {
     this.message = 'Town cycle: ' + phase;
   },
   // Plain wording for the service being approached (never an NPC name), for messages and bug reports.
-  role(phase) { return { storage: 'warehouse', vendor: 'potion merchant', smith: 'repair merchant', gate: 'world statue' }[String(phase).replace(/^(walk|open|close)-/, '')] || 'service point'; },
+  role(phase) { return { storage: 'warehouse', vendor: 'potion merchant', smith: 'repair merchant', gate: 'world statue', arrival: 'town start' }[String(phase).replace(/^(walk|open|close)-/, '')] || 'service point'; },
+  viaArrival() {
+    const t = this.trip, c = this.cfg();
+    if (t.phase === 'walk-arrival') {
+      this.enter(t.resume);
+      this.message = 'Town cycle: the town start is out of reach too; trying the ' + this.role(t.phase) + ' again.';
+      Log.info(this.message);
+      return true;
+    }
+    if (!c.arrival || t.viaArrival === t.phase || !(dist2D(World.pose(), c.arrival) > 60)) return false;
+    const resume = t.phase;
+    this.enter('walk-arrival');
+    t.resume = t.viaArrival = resume;
+    this.message = 'Town cycle: no way to the ' + this.role(resume) + ' from here; going to the town start first.';
+    Log.info(this.message);
+    return true;
+  },
   walk(dest) {
     const t = this.trip, pose = World.pose();
     // Permit a reachable nearby approach, but always stay in service range.
@@ -427,6 +443,7 @@ const Town = {
       return false;
     }
     if (!World.isSitting() && Navigation.watch(t, pose, t.movedAt, t.travel?.route[t.travel.index] || dest) === 'giveup') {
+      if (this.viaArrival()) return false;
       // The warehouse is optional: a blocked walk to it skips the deposit so the potions, repairs and the way back still happen.
       if (t.phase === 'walk-storage') {
         this.enter(this.closeNext('close-storage'));
@@ -438,6 +455,7 @@ const Town = {
       return false;
     }
     const step = Navigation.next(t, dest, false, radius);
+    if (step.error && !step.waiting && this.viaArrival()) return false;
     if (step.waiting || step.error) {
       t.travel = null; t.retryAt = now() + 5000; t.progressAt = now();
       this.message = 'Town movement to the ' + this.role(t.phase) + ': waiting; retrying collision route. ' + (step.error || 'Waiting for collision coverage.');
@@ -741,7 +759,8 @@ const Town = {
       }
     } else if (t.phase.startsWith('walk-')) {
       const role = t.phase.slice(5);
-      if (this.walk(c[role]) && this.trip) this.enter('open-' + role);
+      if (role === 'arrival') { if (this.walk(c.arrival) && this.trip) this.enter(t.resume); }
+      else if (this.walk(c[role]) && this.trip) this.enter('open-' + role);
     } else if (t.phase.startsWith('open-')) {
       const role = t.phase.slice(5), kind = role === 'storage' ? 'storage-open' : role === 'gate' ? 'npc-talk' : 'shop-open';
       if (this.open(role, kind) && this.trip) this.enter({ storage: 'store', vendor: 'buy', smith: 'sell', gate: 'reverse' }[role]);
