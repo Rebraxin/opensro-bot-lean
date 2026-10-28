@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         nixxane bot
 // @namespace    https://opensro.online/
-// @version      1.2.158
+// @version      1.2.159
 // @updateURL    https://raw.githubusercontent.com/nixxane/opensro-bot-lean/main/bot.lean.meta.js
 // @downloadURL  https://raw.githubusercontent.com/nixxane/opensro-bot-lean/main/bot.lean.user.js
 // @description  Combat, reliable looting, potions, restocking and walk-back in one compact panel.
@@ -22,7 +22,7 @@ if (W.__SRO_ASISTAN__ || W.__SRO_LEAN__) {
   console.warn('[NIX] Another SRO assistant is active. Disable it and reload to use NIX.');
   return;
 }
-const VERSION = '1.2.158';
+const VERSION = '1.2.159';
 const APP = { version: VERSION };
 Object.defineProperty(W, '__SRO_LEAN__', { value: APP });
 Object.defineProperty(W, '__SRO_ASISTAN__', { value: APP });
@@ -9631,7 +9631,7 @@ const Alchemy = {
 };
 
 
-const RELEASE_NOTES = [{"version": "1.2.158", "title": "Repair hammer and idle pet pickup can no longer stop the bot", "items": ["An unexpected error in the repair hammer or in pet pickup while the bot is stopped is now logged and skipped, like other optional features, instead of stopping hunting."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.157", "title": "Pickup pet collects while the bot is stopped", "items": ["With a pickup pet set as collector, the pet now keeps picking up your wanted drops when the bot is off, using the same filters as while hunting.", "Only the pet does this: the character never walks to loot while the bot is stopped.", "The pet's settings are not changed when stopped. If its game auto-grab is on, the game collects natively; otherwise NIX sends the selective requests.", "Paused while a shop or the warehouse is open, and briefly after your own manual actions."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.156", "title": "Sell Star gear: Star only", "items": ["The Town page option from 1.2.155 is now \"Sell Star gear too (instead of depositing it)\" and applies to Star gear only. Moon and Sun gear are still deposited in the warehouse. 1.2.155 wrongly included all three.", "Keep names, buff-set gear, the alchemy weapon and the \"also deposit gear requiring level\" list still protect an item.", "Off by default."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.155", "title": "Sell SoX gear too", "items": ["New Town page option: \"Sell Star / Moon / Sun gear too (instead of depositing it)\". When on, SoX gear from the pickup pet is sold at the repair merchant instead of going to the warehouse, and from your own bag as well when \"Sell ordinary gear from the character bag too\" is on.", "Keep names, buff-set gear, the alchemy weapon and the \"also deposit gear requiring level\" list still protect an item.", "Off by default."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.154", "title": "Repair hammer", "items": ["New option on the Supplies page: \"Use a repair hammer when gear is worn\". While hunting, when the most worn piece of gear you are wearing drops below the durability level you set (50% by default), the bot uses a Repair hammer from your bag. One hammer repairs everything you wear.", "It waits for the repair to show on the gear and stops after three unconfirmed attempts. If you also use the Town page's worn-gear trip, set the hammer level higher so the hammer comes first.", "Off by default."], "note": "Contributed by Rebraxin (#33). Tested in simulation only, not in a live game: the hammer's item name and that it works as a plain item use are assumptions."}, {"version": "1.2.153", "title": "Town trips work in low-level towns", "items": ["Low-level characters no longer get stuck in town when the potion merchant does not sell X-Large potions. The town cycle now buys the largest HP or MP potion that merchant does sell, and counts that potion for the low-stock check.", "Characters in towns that do sell X-Large potions behave exactly as before."], "note": "Reported on Discord. Tested in simulation only, not in a live game."}, {"version": "1.2.152", "title": "Party buffs now also go on yourself", "items": ["Friendly buffs you picked under Party buffs (for example Body Deity and Soul Deity) are now cast on your own character too, after the party members. Before, they only went to other members.", "Party buffs also work when you are alone and have buffs picked, instead of stopping with \"Not in a party.\""], "note": "Tested in simulation only; not tried on the live server."}, {"version": "1.2.151", "title": "Town trips that start in town no longer waste a Return Scroll", "items": ["If the bot starts a town trip while you are already standing in town (for example you start hunting there with the town cycle on), it now walks straight to the services. It no longer uses a Return Scroll, and no longer needs one in the bag.", "After the trip it uses the reverse scroll to go back to your last scroll point, or your hunting area if there is none, and hunting resumes there."], "note": "Reported on Discord by egecan (#22). Tested in simulation only, not in a live game. It relies on your town services being saved and within about 500 m of where you stand."}];
+const RELEASE_NOTES = [{"version": "1.2.159", "title": "SoX filter on the Items page, steadier status box", "items": ["Items page: a new SoX filter in Choose items shows only Star, Moon or Sun gear (or any SoX). The bulk buttons apply to what it shows.", "The status lines under HP/MP now sit in a box of fixed height, so changing text no longer pushes the rest of the panel around. Long text scrolls inside the box, and hovering it shows the full text."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.158", "title": "Repair hammer and idle pet pickup can no longer stop the bot", "items": ["An unexpected error in the repair hammer or in pet pickup while the bot is stopped is now logged and skipped, like other optional features, instead of stopping hunting."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.157", "title": "Pickup pet collects while the bot is stopped", "items": ["With a pickup pet set as collector, the pet now keeps picking up your wanted drops when the bot is off, using the same filters as while hunting.", "Only the pet does this: the character never walks to loot while the bot is stopped.", "The pet's settings are not changed when stopped. If its game auto-grab is on, the game collects natively; otherwise NIX sends the selective requests.", "Paused while a shop or the warehouse is open, and briefly after your own manual actions."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.156", "title": "Sell Star gear: Star only", "items": ["The Town page option from 1.2.155 is now \"Sell Star gear too (instead of depositing it)\" and applies to Star gear only. Moon and Sun gear are still deposited in the warehouse. 1.2.155 wrongly included all three.", "Keep names, buff-set gear, the alchemy weapon and the \"also deposit gear requiring level\" list still protect an item.", "Off by default."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.155", "title": "Sell SoX gear too", "items": ["New Town page option: \"Sell Star / Moon / Sun gear too (instead of depositing it)\". When on, SoX gear from the pickup pet is sold at the repair merchant instead of going to the warehouse, and from your own bag as well when \"Sell ordinary gear from the character bag too\" is on.", "Keep names, buff-set gear, the alchemy weapon and the \"also deposit gear requiring level\" list still protect an item.", "Off by default."], "note": "Tested in simulation only, not in a live game."}, {"version": "1.2.154", "title": "Repair hammer", "items": ["New option on the Supplies page: \"Use a repair hammer when gear is worn\". While hunting, when the most worn piece of gear you are wearing drops below the durability level you set (50% by default), the bot uses a Repair hammer from your bag. One hammer repairs everything you wear.", "It waits for the repair to show on the gear and stops after three unconfirmed attempts. If you also use the Town page's worn-gear trip, set the hammer level higher so the hammer comes first.", "Off by default."], "note": "Contributed by Rebraxin (#33). Tested in simulation only, not in a live game: the hammer's item name and that it works as a plain item use are assumptions."}, {"version": "1.2.153", "title": "Town trips work in low-level towns", "items": ["Low-level characters no longer get stuck in town when the potion merchant does not sell X-Large potions. The town cycle now buys the largest HP or MP potion that merchant does sell, and counts that potion for the low-stock check.", "Characters in towns that do sell X-Large potions behave exactly as before."], "note": "Reported on Discord. Tested in simulation only, not in a live game."}, {"version": "1.2.152", "title": "Party buffs now also go on yourself", "items": ["Friendly buffs you picked under Party buffs (for example Body Deity and Soul Deity) are now cast on your own character too, after the party members. Before, they only went to other members.", "Party buffs also work when you are alone and have buffs picked, instead of stopping with \"Not in a party.\""], "note": "Tested in simulation only; not tried on the live server."}];
 
 // Check trusted repository metadata; never execute downloaded update code.
 const Updates = {
@@ -10167,7 +10167,7 @@ const ItemRules = {
     this.infos.set(id, info);
     return info;
   },
-  // Every catalogue item that passes the filters, in id order. f: { query, group, race, gender, degrees: Set, kind, custom, nearby }.
+  // Every catalogue item that passes the filters, in id order. f: { query, group, race, gender, degrees: Set, kind, sox ('any', '1', '2', '3'), custom, nearby }.
   list(f) {
     const query = (f.query || '').toLowerCase().trim(), rules = this.cfg().rules, out = [];
     // Item numbers of the drops in view: the exact items to give a rule, whatever the item is called in the catalogue.
@@ -10180,6 +10180,7 @@ const ItemRules = {
       if (f.race && i.race !== f.race) continue;
       if (f.gender && i.gender && i.gender !== f.gender) continue;
       if (f.degrees?.size && !f.degrees.has(i.degree)) continue;
+      if (f.sox && (f.sox === 'any' ? !i.sox : String(i.sox) !== f.sox)) continue;
       if (f.kind && i.kind !== f.kind && i.material !== f.kind) continue;
       if (query && !i.name.toLowerCase().includes(query) && !i.code.toLowerCase().includes(query) && String(id) !== query) continue;
       out.push(i);
@@ -11719,7 +11720,7 @@ const UI = {
   },
   // Items page: every item of the game's catalogue with its rule (sBot's item list). Filters re-render only the table,
   // so typing in the search box keeps its focus. 100 rows per page; bulk buttons apply to everything the filters show.
-  itemFilter: { query: '', group: 'all', race: '', gender: '', kind: '', degrees: new Set(), custom: false, page: 0 },
+  itemFilter: { query: '', group: 'all', race: '', gender: '', kind: '', sox: '', degrees: new Set(), custom: false, page: 0 },
   drawItems() {
     if (!Items.data.size) {
       this.pane.append(this.group('Items', el('div', 'Loading the game\u2019s item list…', 'empty')));
@@ -11755,6 +11756,7 @@ const UI = {
       choose('Race', [['', 'Any'], ['CH', 'Chinese'], ['EU', 'European']], 'race'),
       choose('Gender', [['', 'Any'], ['Male', 'Male'], ['Female', 'Female']], 'gender'),
       choose('Type', [['', 'Any'], ...kinds.map(k => [k, k])], 'kind'),
+      choose('SoX', [['', 'Any'], ['any', 'Any SoX (_A_, _B_, _C_)'], ['1', 'Star (_A_)'], ['2', 'Moon (_B_)'], ['3', 'Sun (_C_)']], 'sox'),
       el('div', 'Degree', 'muted'), degrees, search, customLabel, nearbyLabel);
     const bulk = el('div', null, 'row bulk'), table = el('div', null, 'item-table'), pager = el('div', null, 'row pager'), summary = el('p', '', 'muted');
     table.setAttribute('role', 'table'); table.setAttribute('aria-label', 'Item rules');
