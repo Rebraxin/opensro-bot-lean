@@ -46,7 +46,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p .issue
-          gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" --comments > .issue/issue.md
+          # Plain `gh issue view --comments` prints nothing with GITHUB_TOKEN here, so build the text from JSON.
+          # Our own earlier comments are left out.
+          gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" --json title,body,comments --jq '"# " + .title + "\n\n" + .body
+            + ([.comments[] | select(.author.login != "github-actions") | "\n\n## Comment by " + .author.login + "\n\n" + .body] | join(""))' > .issue/issue.md
+          [ -s .issue/issue.md ] || { echo "Could not read issue #$ISSUE."; exit 1; }
           prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --search "Fixes #$ISSUE in:body" --json number --jq '.[].number')
           if [ -n "$prs" ]; then echo "PR #$prs already handles this issue."; echo "skip=true" >> "$GITHUB_ENV"; fi
           wc -c .issue/issue.md
