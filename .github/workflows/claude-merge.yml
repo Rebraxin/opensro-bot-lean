@@ -30,6 +30,10 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+          # Fork PRs (e.g. corevider's) need this opt-in. Only the trusted authors above reach this job, the PR's
+          # code runs with no token in its environment, and the token is kept in .git only for branches in this repo.
+          allow-unsafe-pr-checkout: true
+          persist-credentials: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
 
       - name: Can the agent push to this branch?
         id: push
@@ -75,22 +79,29 @@ jobs:
             Choose HOLD for anything suspicious: new network hosts, new dependencies, obfuscated code, credentials, large rewrites,
                changes to how the bot talks to the game server, or anything you are unsure about.
 
-      - name: Merge when everything checks out
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ github.event.pull_request.number }}
+      # Runs the PR's code, so no token in this step's environment.
+      - name: Final build and tests
+        id: final
         run: |
           set -e
-          verdict=$(gh pr view "$PR" --json comments --jq '[.comments[]|select(.author.login=="github-actions")|.body|capture("VERDICT: (?<v>MERGE|HOLD)").v]|last // "HOLD"')
-          [ "$verdict" = "MERGE" ] || { echo "Verdict: $verdict. Not merging."; exit 0; }
-          git fetch -q origin "pull/$PR/head" 2>/dev/null || true
-          if gh pr diff "$PR" --name-only | grep -q '^\.github/'; then echo "Touches .github/. Not merging."; exit 0; fi
           if [ -f package.json ] && [ ! -s package.json ] && ! git ls-files --error-unmatch package.json >/dev/null 2>&1; then rm package.json; fi
           python3 build-lean.py >/dev/null
           node --check bot.lean.user.js
           node lean.test.cjs | tail -1
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Merge when everything checks out
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          TESTED: ${{ steps.final.outputs.sha }}
+        run: |
+          set -e
+          verdict=$(gh pr view "$PR" --json comments --jq '[.comments[]|select(.author.login=="github-actions")|.body|capture("VERDICT: (?<v>MERGE|HOLD)").v]|last // "HOLD"')
+          [ "$verdict" = "MERGE" ] || { echo "Verdict: $verdict. Not merging."; exit 0; }
+          if gh pr diff "$PR" --name-only | grep -q '^\.github/'; then echo "Touches .github/. Not merging."; exit 0; fi
           head=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
-          [ "$head" = "$(git rev-parse HEAD)" ] || { echo "Branch changed since the checks. Not merging."; exit 0; }
+          [ "$head" = "$TESTED" ] || { echo "Branch changed since the checks. Not merging."; exit 0; }
           gh pr merge "$PR" --squash --match-head-commit "$head"
           # A merge by GITHUB_TOKEN raises no events, so start the release explicitly.
           gh workflow run release.yml --ref main -f pr="$PR"
