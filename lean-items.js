@@ -66,7 +66,7 @@ const ItemRules = {
     this.infos.set(id, info);
     return info;
   },
-  // Every catalogue item that passes the filters, in id order. f: { query, group, race, gender, degrees: Set, kind, custom, nearby }.
+  // Every catalogue item that passes the filters, in id order. f: { query, group, race, gender, degrees: Set, kind, sox ('any', '1', '2', '3'), custom, nearby }.
   list(f) {
     const query = (f.query || '').toLowerCase().trim(), rules = this.cfg().rules, out = [];
     // Item numbers of the drops in view: the exact items to give a rule, whatever the item is called in the catalogue.
@@ -79,6 +79,7 @@ const ItemRules = {
       if (f.race && i.race !== f.race) continue;
       if (f.gender && i.gender && i.gender !== f.gender) continue;
       if (f.degrees?.size && !f.degrees.has(i.degree)) continue;
+      if (f.sox && (f.sox === 'any' ? !i.sox : String(i.sox) !== f.sox)) continue;
       if (f.kind && i.kind !== f.kind && i.material !== f.kind) continue;
       if (query && !i.name.toLowerCase().includes(query) && !i.code.toLowerCase().includes(query) && String(id) !== query) continue;
       out.push(i);

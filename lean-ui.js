@@ -1090,7 +1090,7 @@ const UI = {
   },
   // Items page: every item of the game's catalogue with its rule (sBot's item list). Filters re-render only the table,
   // so typing in the search box keeps its focus. 100 rows per page; bulk buttons apply to everything the filters show.
-  itemFilter: { query: '', group: 'all', race: '', gender: '', kind: '', degrees: new Set(), custom: false, page: 0 },
+  itemFilter: { query: '', group: 'all', race: '', gender: '', kind: '', sox: '', degrees: new Set(), custom: false, page: 0 },
   drawItems() {
     if (!Items.data.size) {
       this.pane.append(this.group('Items', el('div', 'Loading the game\u2019s item list…', 'empty')));
@@ -1126,6 +1126,7 @@ const UI = {
       choose('Race', [['', 'Any'], ['CH', 'Chinese'], ['EU', 'European']], 'race'),
       choose('Gender', [['', 'Any'], ['Male', 'Male'], ['Female', 'Female']], 'gender'),
       choose('Type', [['', 'Any'], ...kinds.map(k => [k, k])], 'kind'),
+      choose('SoX', [['', 'Any'], ['any', 'Any SoX (_A_, _B_, _C_)'], ['1', 'Star (_A_)'], ['2', 'Moon (_B_)'], ['3', 'Sun (_C_)']], 'sox'),
       el('div', 'Degree', 'muted'), degrees, search, customLabel, nearbyLabel);
     const bulk = el('div', null, 'row bulk'), table = el('div', null, 'item-table'), pager = el('div', null, 'row pager'), summary = el('p', '', 'muted');
     table.setAttribute('role', 'table'); table.setAttribute('aria-label', 'Item rules');
