@@ -5,13 +5,14 @@ name: Claude review, fix and merge
 # the agent, does the merge, and only when the build, syntax check and tests pass, nothing under
 # .github/ changed and the verdict is MERGE. Everyone else keeps the read-only review in
 # claude-review.yml. To trust another author, add their login to the list in both files.
+# A merged PR is then released by release.yml.
 on:
   pull_request_target:
     types: [opened, reopened, ready_for_review, synchronize]
 
 jobs:
   merge:
-    if: github.event.pull_request.draft == false && contains(fromJSON('["Rebraxin","claude[bot]","app/claude","nixxane"]'), github.event.pull_request.user.login)
+    if: github.event.pull_request.draft == false && contains(fromJSON('["Rebraxin","corevider","claude[bot]","app/claude","nixxane"]'), github.event.pull_request.user.login)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
@@ -22,6 +23,7 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,3 +92,5 @@ jobs:
           head=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
           [ "$head" = "$(git rev-parse HEAD)" ] || { echo "Branch changed since the checks. Not merging."; exit 0; }
           gh pr merge "$PR" --squash --match-head-commit "$head"
+          # A merge by GITHUB_TOKEN raises no events, so start the release explicitly.
+          gh workflow run release.yml --ref main -f pr="$PR"
