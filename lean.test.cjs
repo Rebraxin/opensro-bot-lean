@@ -4744,6 +4744,12 @@ test('the pet status notes have a fixed height and are never hidden, so the pane
   assert.match(ui, /petNote = el\('p', '', 'muted pet-note'\)/); assert.match(ui, /petPotionNote = el\('p', PetPotion\.message, 'muted pet-note'\)/);
   assert.doesNotMatch(ui, /petNote\.hidden/);
 });
+test('the wait status box keeps one height for short and long text, so the panel below does not shift', () => {
+  const fs = require('fs'), css = fs.readFileSync(__dirname + '/lean-skin.css', 'utf8'), ui = fs.readFileSync(__dirname + '/lean-ui.js', 'utf8');
+  assert.match(css, /(^|\n)\.waiting\{[^}]*height:\d+lh;[^}]*overflow-y:auto/);
+  assert.doesNotMatch(css, /\.waiting\{[^}]*min-height/, 'a minimum height still lets long text grow the box');
+  assert.match(ui, /waitNote\.title = /, 'the full text stays readable in the tooltip');
+});
 test('buff gear says why a due buff is not being swapped in, instead of staying silent', () => {
   const f = buffGearFixture(), gp = f.World.gp;
   gp.inventory = gp.inventory.filter(i => i.slot !== 15);
