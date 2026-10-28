@@ -1813,6 +1813,12 @@ test('unconfirmed repair hammer use backs off and stops after three attempts', (
   for (let i = 0; i < 4; i++) { f.advance(9000); f.Controller.tick(); f.advance(90000); f.Controller.tick(); }
   assert.equal(f.commands.filter(c => c.kind === 'item-use').length, 3); assert.match(f.RepairHammer.message, /3 attempts/);
 });
+test('a repair hammer or idle pet pickup error is logged without stopping the bot', () => {
+  const f = fixture(); wornWithHammer(f); f.RepairHammer.tick = () => { throw Error('boom'); };
+  f.Controller.tick(); assert.equal(f.Hunt.running, true); assert.notEqual(f.Controller.mode, 'error');
+  const g = fixture(); g.Hunt.stop(); g.Loot.idleTick = () => { throw Error('boom'); };
+  g.Controller.tick(); assert.equal(g.Controller.mode, 'idle');
+});
 test('res travel returns when radius shrinks and stops hunting if return cannot progress', () => {
   const f=resurrectionTravel(); f.Controller.tick(); f.World.gp.pose.x=270;
   f.Settings.profile.party.resRadius=200; f.advance(1000); f.Controller.tick();

@@ -239,7 +239,7 @@ const Controller = {
       if (Chase.tick()) { this.mode = 'obstacle pursuit'; return; }
       if (BuffGear.tick()) { this.mode = 'buff gear'; return; }
       if (SpeedScroll.tick()) { this.mode = 'speed scroll'; return; }
-      if (RepairHammer.tick()) { this.mode = 'repair hammer'; return; }
+      if (this.guard('Repair hammer', () => RepairHammer.tick())) { this.mode = 'repair hammer'; return; }
       if (Trade.tick()) { this.mode = 'trading'; return; }
       if (!WalkBack.active && !Restock.trip && !Restock.recording && !Controller.resumeAfterRevive &&
           !Restock.activeShop() && !World.gp.storage && Resurrect.tick()) {
@@ -251,7 +251,7 @@ const Controller = {
       if (WalkBack.active) { this.mode = 'returning'; WalkBack.tick(); }
       else if (Restock.recording) this.mode = 'recording';
       else if (Hunt.running) { if (!Trace.tick()) Hunt.tick(); this.mode = Restock.trip ? 'shopping' : Hunt.state; }
-      else { Loot.idleTick(); this.mode = 'idle'; }
+      else { this.guard('Idle pet pickup', () => Loot.idleTick()); this.mode = 'idle'; }
     } catch (e) {
       stopAll();
       if (now() - this.lastErrorAt > 5000) { this.lastErrorAt = now(); Log.error(e.message || String(e)); UI.toast('Bot stopped: ' + e.message, 'warn'); }
