@@ -783,6 +783,11 @@ const UI = {
       this.speedNote = el('p', '', 'muted');
       pots.append(this.check('Use beginner +100% speed scroll automatically', () => P().speedScroll, v => { P().speedScroll = v; SpeedScroll.reset(); }),
         el('p', 'Uses only the beginner scroll during hunting or travel when no movement-speed buff is active. Works during combat casts; potions have priority. Waits for buff confirmation and stops retrying after three unconfirmed attempts.', 'muted'), this.speedNote);
+      const R = () => P().repairHammer;
+      this.hammerNote = el('p', '', 'muted');
+      pots.append(this.check('Use a repair hammer when gear is worn', () => R().on, v => { R().on = v; RepairHammer.reset(); }),
+        this.number('Gear durability below (%)', () => R().pct, v => R().pct = v, 1, 99),
+        el('p', 'While hunting, when the most worn repairable item you are wearing drops below this share of its maximum durability, uses a repair hammer from the bag; one hammer repairs everything you wear. Waits for the repair to show and stops retrying after three unconfirmed attempts. Keep it above the Town page worn-gear level so the hammer comes first.', 'muted'), this.hammerNote);
       for (const kind of ['hp', 'mp']) pots.append(this.check('Use ' + kind.toUpperCase(), () => P()[kind].on, v => P()[kind].on = v), this.number(kind.toUpperCase() + ' below (%)', () => P()[kind].pct, v => P()[kind].pct = v, 5, 95));
       pots.append(this.check('Use vigor potions', () => P().vigor.on, v => P().vigor.on = v),
         this.number('Vigor when HP below (%)', () => P().vigor.hpPct, v => P().vigor.hpPct = v, 0, 95),
@@ -1224,6 +1229,7 @@ const UI = {
     if (!this.status) return;
     if (this.is('Supplies') && this.petPotionNote) { this.petPotionNote.textContent = this.petPotionNote.title = PetPotion.message; }
     if (this.is('Supplies') && this.speedNote) this.speedNote.textContent = SpeedScroll.message;
+    if (this.is('Supplies') && this.hammerNote) this.hammerNote.textContent = RepairHammer.message;
     if (this.is('Loot') && this.petNote) { const text = Loot.petStatus(); this.petNote.style.visibility = Loot.petMode() ? '' : 'hidden'; this.petNote.textContent = text; this.petNote.title = text; }
     Learned.repair();
     if (this.is('Combat') && this.lastSkillKey !== this.skillKey()) { this.draw(); return; }
