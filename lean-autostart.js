@@ -31,6 +31,7 @@ const AutoStart = {
     if (!entry) return;
     if (Reconnect.active()) return this.cancel('Auto-start skipped: reconnect is bringing the bot back.');
     if (Hunt.running || Town.trip || WalkBack.active || Trade.run || Alchemy.run || Alchemy.pending || Restock.recording) return this.cancel();
+    if (now() - entry.at > AUTO_START_GIVE_UP_MS) return this.cancel('Auto-start gave up: the game did not settle within 2 minutes.');
     if (World.charName && Settings.profileKey !== 'profile:' + World.charName) { this.message = 'Auto-start: waiting for the character settings.'; return; }
     if (!this.on()) { this.entry = null; return; }
     if (!Hunt.cfg().center) {
@@ -40,7 +41,6 @@ const AutoStart = {
     const wait = this.waiting(entry);
     if (wait) {
       this.message = 'Auto-start: ' + wait;
-      if (now() - entry.at > AUTO_START_GIVE_UP_MS) this.cancel('Auto-start gave up: the game did not settle within 2 minutes.');
       return;
     }
     this.entry = null;

@@ -4756,6 +4756,9 @@ test('auto-start away from the spot outside town walks back; dead it revives fir
   assert.equal(f.Hunt.running, false, 'the default profile is not read as the character\'s choice');
   assert.match(f.AutoStart.message, /waiting for the character settings/);
   f.Settings.useCharacter('Hero'); f.Controller.tick(); assert.equal(f.Hunt.running, true, 'the character\'s own setting decides');
+  f = fixture(); f.World.charName = 'Hero'; f.Controller.tick(); f.advance(121000); f.Controller.tick();
+  assert.equal(f.AutoStart.entry, null, 'a profile that never loads still gives up');
+  assert.match(f.AutoStart.message, /gave up/);
 });
 test('a walk that starts on a blocked tile or against a wall steps out to open ground first, never through the wall', () => {
   const wall = { x: 0, y: 0, z: 0, yaw: 0, mesh: { vertices: [200,0,0,200,0,1920], edges: [0,1,0,65535,3,0] } };
